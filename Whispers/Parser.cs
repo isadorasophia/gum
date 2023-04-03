@@ -60,6 +60,19 @@ namespace Whispers
         private int _indentationIndex = 0;
 
         /// <summary>
+        /// The last directive '@random' to randomize the following choices.
+        /// </summary>
+        private bool _random = false;
+
+        private bool ConsumeIsRandom()
+        {
+            bool random = _random;
+            _random = false;
+
+            return random;
+        }
+
+        /// <summary>
         /// The last directive '@' to play an amount of times.
         /// </summary>
         private int _playUntil = -1;
@@ -280,8 +293,7 @@ namespace Whispers
                             }
                             else
                             {
-                                _currentBlock = _script.CurrentSituation.AddBlock(
-                                    ConsumePlayUntil(), join: false, isNestedBlock, RelationshipKind.Random).Id;
+                                _random = true;
                             }
                         }
                         else if (TryReadInteger(command) is int number)
@@ -324,12 +336,19 @@ namespace Whispers
 
                         // Create the condition block.
 
+                        line = line.Slice(0, endColumn);
                         if (!hasCreatedJoinBlock)
                         {
-                            _currentBlock = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), join: false, isNestedBlock).Id;
+                            RelationshipKind relationshipKind = RelationshipKind.Next;
+                            if (line.StartsWith(Tokens.Else))
+                            {
+                                relationshipKind = RelationshipKind.IfElse;
+                            }
+
+                            _currentBlock = _script.CurrentSituation.AddBlock(
+                                ConsumePlayUntil(), join: false, isNestedBlock, relationshipKind).Id;
                         }
 
-                        line = line.Slice(0, endColumn);
                         return ParseConditions(line, index, column);
 
                     // [
@@ -403,8 +422,17 @@ namespace Whispers
 
         private bool ParseOption(ReadOnlySpan<char> line, int _, int __)
         {
+            bool isNested = false;
+
+            RelationshipKind relationshipKind = RelationshipKind.HighestScore;
+            if (ConsumeIsRandom())
+            {
+                relationshipKind = RelationshipKind.Random;
+                isNested = true;
+            }
+
             _currentBlock = _script.CurrentSituation.AddBlock(
-                    ConsumePlayUntil(), join: false, isNested: false).Id;
+                    ConsumePlayUntil(), join: false, isNested, relationshipKind).Id;
 
             line = line.TrimStart().TrimEnd();
             Block.AddLine(line);

@@ -95,9 +95,6 @@ namespace Whispers.InnerThoughts
                     return true;
 
                 case RelationshipKind.IfElse:
-                    Debug.Assert(lastRelationship.Kind == RelationshipKind.Next, 
-                        "We shouldn't be able to reach here if the relationship is not 'Next'.");
-
                     // This assumes that the 'else' block has already been inserted into the relationship
                     // and corresponds to the last added block.
 
@@ -212,21 +209,22 @@ namespace Whispers.InnerThoughts
                 return CreateBlockWithJoin(playUntil);
             }
 
-            bool hasBlocks = _lastBlocks.TryPeek(out int lastBlock); // Needed if we need to nest blocks.
+            bool hasBlocks = _lastBlocks.TryPeek(out int lastBlockId); // Needed if we need to nest blocks.
 
             Relationship? relationship;
             Block block = CreateBlock(playUntil, track: true);
 
             // If this was called right after a situation has been declared, it'll think that it is a nested block
             // (when it's not really).
+            
             if (isNested && hasBlocks)
             {
                 if (hasBlocks)
                 {
-                    if (!BlocksRelationship.TryGetValue(lastBlock, out relationship))
+                    if (!BlocksRelationship.TryGetValue(lastBlockId, out relationship))
                     {
-                        relationship = CreateRelationship(RelationshipKind.Next);
-                        LinkRelationship(lastBlock, relationship);
+                        relationship = CreateRelationship(kind);
+                        LinkRelationship(lastBlockId, relationship);
                     }
 
                     relationship.Blocks.Add(block.Id);
@@ -236,13 +234,13 @@ namespace Whispers.InnerThoughts
                     relationship = CreateRelationship(RelationshipKind.Next);
                     relationship.Blocks.Add(block.Id);
 
-                    LinkRelationship(lastBlock, relationship);
-                }
-                
-                if (relationship.Kind != RelationshipKind.Next)
-                {
-                    relationship = CreateRelationship(kind);
-                    LinkRelationship(block.Id, relationship);
+                    LinkRelationship(lastBlockId, relationship);
+
+                    if (relationship.Kind != RelationshipKind.Next)
+                    {
+                        relationship = CreateRelationship(kind);
+                        LinkRelationship(block.Id, relationship);
+                    }
                 }
             }
             else if (!hasBlocks)
@@ -266,13 +264,48 @@ namespace Whispers.InnerThoughts
                     }
                 }
 
+                if (kind == RelationshipKind.IfElse && target.Kind != kind)
+                {
+                    kind = RelationshipKind.Next;
+                }
+
+                if (kind == RelationshipKind.HighestScore && target.Kind == RelationshipKind.Random)
+                {
+                    kind = RelationshipKind.Random;
+                }
+
                 if (target.Kind != kind && target.Blocks.Count == 0)
                 {
                     target.Kind = kind;
                 }
+                else if (target.Kind != kind && kind == RelationshipKind.HighestScore)
+                {
+                    target = CreateRelationship(kind);
+                    target.Blocks.Add(block.Id);
+
+                    LinkRelationship(lastBlockId, target);
+                }
                 else if (target.Kind != kind)
-                { 
-                    Debug.Fail("Implement this!"); 
+                {
+                    _ = _relationships.Pop();
+
+                    Block lastBlock = Blocks[lastBlockId];
+                    Block empty = CreateBlock(playUntil: lastBlock.PlayUntil, track: false);
+
+                    target = CreateRelationship(kind);
+                    target.Blocks.Add(lastBlock.Id);
+
+                    int lastBlockPosition = NextBlocks.IndexOf(lastBlockId);
+                    if (lastBlockPosition != -1)
+                    {
+                        NextBlocks[lastBlockPosition] = empty.Id;
+                    }
+                    else
+                    {
+                        Debug.Fail("Figure out whoever owns this.");
+                    }
+
+                    LinkRelationship(empty.Id, target);
                 }
 
                 target.Blocks.Add(block.Id);
@@ -384,7 +417,7 @@ namespace Whispers.InnerThoughts
                     _ = _relationships.Pop();
                     _ = _lastBlocks.Pop();
                 }
-                else if (relationship.Kind == RelationshipKind.Choice)
+                else if (_relationships.Count >= 2 && _relationships.ElementAt(1).Kind == RelationshipKind.Choice)
                 {
                     _ = _relationships.Pop();
                     _ = _lastBlocks.Pop();
