@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
+using Whispers.Utilities;
 
 namespace Whispers.InnerThoughts
 {
@@ -200,16 +201,18 @@ namespace Whispers.InnerThoughts
         }
 
         /// <summary>
-        /// Creates a new empty with a set number of occurrences.
+        /// Creates a new block subjected to a <paramref name="kind"/> relationship.
         /// </summary>
         public Block AddBlock(int playUntil, bool join, bool isNested, RelationshipKind kind = RelationshipKind.Next)
         {
+            // If this should actually join other nodes, make sure we do that.
             if (join && _relationships.Count > 0)
             {
                 return CreateBlockWithJoin(playUntil);
             }
 
-            bool hasBlocks = _lastBlocks.TryPeek(out int lastBlockId); // Needed if we need to nest blocks.
+            // We need to know the "parent" node when nesting blocks (make the parent -> point to the new block).
+            bool hasBlocks = _lastBlocks.TryPeek(out int lastBlockId);
 
             Relationship? relationship;
             Block block = CreateBlock(playUntil, track: true);
@@ -219,10 +222,12 @@ namespace Whispers.InnerThoughts
             
             if (isNested && hasBlocks)
             {
+                // If there is a parent block that this can be nested to.
                 if (hasBlocks)
                 {
                     if (!BlocksRelationship.TryGetValue(lastBlockId, out relationship))
                     {
+                        // The parent does not have an edge to other nodes. In that case, create one.
                         relationship = CreateRelationship(kind);
                         LinkRelationship(lastBlockId, relationship);
                     }
@@ -245,10 +250,19 @@ namespace Whispers.InnerThoughts
             }
             else if (!hasBlocks)
             {
+                // This is actually a "root" node. Add it directly as the next available node and create a relationship.
                 NextBlocks.Add(block.Id);
 
                 relationship = CreateRelationship(kind);
                 LinkRelationship(block.Id, relationship);
+
+                // This is actually a non-sequential node, so it can't be simply tracked in "NextBlocks".
+                // TODO: Remove NextBlocks?? I don't know why I added that.
+                if (!kind.IsSequential())
+                {
+                    block = CreateBlock(playUntil, track: false);
+                    relationship.Blocks.Add(block.Id);
+                }
             }
             else
             {
@@ -266,11 +280,15 @@ namespace Whispers.InnerThoughts
 
                 if (kind == RelationshipKind.IfElse && target.Kind != kind)
                 {
+                    // This has been a bit of a headache, but if this is an "if else" and the current connection
+                    // is not the same, we'll convert this later.
                     kind = RelationshipKind.Next;
                 }
 
                 if (kind == RelationshipKind.HighestScore && target.Kind == RelationshipKind.Random)
                 {
+                    // A "HighestScore" kind when is matched with a "random" relationship, it is considered one of them
+                    // automatically.
                     kind = RelationshipKind.Random;
                 }
 
@@ -281,7 +299,6 @@ namespace Whispers.InnerThoughts
                 else if (target.Kind != kind && kind == RelationshipKind.HighestScore)
                 {
                     target = CreateRelationship(kind);
-                    target.Blocks.Add(block.Id);
 
                     LinkRelationship(lastBlockId, target);
                 }
@@ -413,7 +430,6 @@ namespace Whispers.InnerThoughts
 
                 if (relationship.Kind == RelationshipKind.Random)
                 {
-                    _ = _relationships.Pop();
                     _ = _relationships.Pop();
                     _ = _lastBlocks.Pop();
                 }

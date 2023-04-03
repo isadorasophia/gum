@@ -186,6 +186,7 @@ namespace Whispers
                     {
                         switch ((TokenChar)line[0])
                         {
+                            // case TokenChar.Flow: // TODO: This may require popping stuff.
                             case TokenChar.BeginCondition:
                                 createJoinBlock = false;
 
@@ -381,16 +382,16 @@ namespace Whispers
                         }
 
                         _playUntil = 1;
-                        return ParseOption(line, index, column);
+                        return ParseOption(line, index, column, join: false, isNestedBlock);
 
                     // +
                     case TokenChar.MultipleBlock:
                         _playUntil = -1;
-                        return ParseOption(line, index, column);
+                        return ParseOption(line, index, column, join: false, isNestedBlock);
 
                     // >
                     case TokenChar.OptionBlock:
-                        return ParseChoice(line, index, column);
+                        return ParseChoice(line, index, column, join: false, isNestedBlock);
 
                     default:
                         return true;
@@ -409,10 +410,10 @@ namespace Whispers
             return true;
         }
 
-        private bool ParseChoice(ReadOnlySpan<char> line, int index, int column)
+        private bool ParseChoice(ReadOnlySpan<char> line, int lineIndex, int columnIndex, bool join, bool nested)
         {
             _currentBlock = _script.CurrentSituation.AddBlock(
-                    ConsumePlayUntil(), join: false, isNested: false, RelationshipKind.Choice).Id;
+                    ConsumePlayUntil(), join, nested, RelationshipKind.Choice).Id;
 
             line = line.TrimStart().TrimEnd();
             Block.AddLine(line);
@@ -420,19 +421,16 @@ namespace Whispers
             return true;
         }
 
-        private bool ParseOption(ReadOnlySpan<char> line, int _, int __)
+        private bool ParseOption(ReadOnlySpan<char> line, int lineIndex, int columnIndex, bool join, bool nested)
         {
-            bool isNested = false;
-
             RelationshipKind relationshipKind = RelationshipKind.HighestScore;
             if (ConsumeIsRandom())
             {
                 relationshipKind = RelationshipKind.Random;
-                isNested = true;
             }
 
             _currentBlock = _script.CurrentSituation.AddBlock(
-                    ConsumePlayUntil(), join: false, isNested, relationshipKind).Id;
+                    ConsumePlayUntil(), join, nested, relationshipKind).Id;
 
             line = line.TrimStart().TrimEnd();
             Block.AddLine(line);
