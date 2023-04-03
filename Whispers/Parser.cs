@@ -107,6 +107,8 @@ namespace Whispers
             _lines = lines;
         }
 
+        private int _indentBuffer = 0;
+
         internal CharacterScript? Start()
         {
             int index = 0;
@@ -143,6 +145,16 @@ namespace Whispers
 
                 if (lineNoIndent.IsEmpty) continue;
 
+                if (_indentationIndex < _lastIndentationIndex)
+                {
+                    _indentBuffer += 1;
+                }
+
+                if (lineNoIndent[0] == (char)TokenChar.BeginCondition)
+                {
+                    _indentBuffer -= 1;
+                }
+
                 if (!ProcessLine(lineNoIndent, index, column))
                 {
                     return null;
@@ -178,6 +190,9 @@ namespace Whispers
             else if (_script.HasCurrentSituation)
             {
                 // We are on a valid situation, check whether we need to join dialogs.
+                // Indentation changed:
+                //     < from here
+                // ^ to here
                 if (_indentationIndex < _lastIndentationIndex)
                 {
                     bool createJoinBlock = true;
@@ -190,7 +205,8 @@ namespace Whispers
                             case TokenChar.BeginCondition:
                                 createJoinBlock = false;
 
-                                if (_lastIndentationIndex - _indentationIndex > 1)
+                                if ((_lastIndentationIndex - _indentationIndex > 1) ||
+                                    (_indentBuffer == 0 && !line.Slice(1).StartsWith(Tokens.Else)))
                                 {
                                     _script.CurrentSituation.PopLastRelationship();
                                 }
@@ -202,6 +218,7 @@ namespace Whispers
                             case TokenChar.MultipleBlock:
                             case TokenChar.OnceBlock:
                                 _script.CurrentSituation.PopLastRelationship();
+
                                 if (line.Length > 1 && line[1] == (char)TokenChar.OptionBlock)
                                 {
                                     // Actually a ->
@@ -212,11 +229,11 @@ namespace Whispers
                                 break;
 
                             default:
-                                _script.CurrentSituation.PopLastRelationship();
                                 break;
                         }
                     }
 
+                    // Depending where we were, we may need to "join" different branches.
                     if (createJoinBlock)
                     {
                         _currentBlock = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), join: true, isNested: false).Id;
@@ -469,17 +486,20 @@ namespace Whispers
 
                 return false;
             }
-            
+
+            bool isExit = false;
             if (MemoryExtensions.Equals(location, "exit!", StringComparison.OrdinalIgnoreCase))
             {
                 // If this is an 'exit!' keyword, finalize right away.
-                _script.CurrentSituation.ExitCurrentBlock();
+                isExit = true;
             }
             else
             {
                 // Otherwise, keep track of this and add at the end.
                 _gotoDestinations.Add((Block, location.ToString(), lineIndex));
             }
+
+            _script.CurrentSituation.MarkGotoOnBlock(_currentBlock, isExit);
 
             return true;
         }

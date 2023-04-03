@@ -278,8 +278,63 @@ namespace Whispers.InnerThoughts
                     }
                 }
 
+                if (target.Kind != kind && target.Blocks.Count == 0 &&
+                    NextBlocks.Contains(lastBlockId) && kind == RelationshipKind.Next)
+                {
+                    _relationships.Clear();
+                    _lastBlocks.Clear();
+                    _lastBlocks.Push(block.Id);
+
+                    // This is actually a "root" node. Add it directly as the next available node and create a relationship.
+                    NextBlocks.Add(block.Id);
+
+                    relationship = CreateRelationship(kind);
+                    LinkRelationship(block.Id, relationship);
+
+                    // This is actually a non-sequential node, so it can't be simply tracked in "NextBlocks".
+                    // TODO: Remove NextBlocks?? I don't know why I added that.
+                    if (!kind.IsSequential())
+                    {
+                        block = CreateBlock(playUntil, track: false);
+                        relationship.Blocks.Add(block.Id);
+                    }
+
+                    return block;
+                }
+
                 if (kind == RelationshipKind.IfElse && target.Kind != kind)
                 {
+                    if (target.Kind != RelationshipKind.Next)
+                    {
+                        _ = _lastBlocks.TryPop(out _);
+                        _ = _lastBlocks.TryPop(out _);
+
+                        _lastBlocks.Push(block.Id);
+
+                        _ = _relationships.TryPop(out _);
+
+                        Block empty = CreateBlock(playUntil: -1, track: false);
+
+                        target = CreateRelationship(kind);
+
+                        target.Blocks.Add(lastBlockId);
+                        target.Blocks.Add(block.Id);
+
+                        LinkRelationship(empty.Id, target);
+
+                        int lastBlockPosition = NextBlocks.IndexOf(lastBlockId);
+                        if (lastBlockPosition != -1)
+                        {
+                            NextBlocks[lastBlockPosition] = empty.Id;
+                        }
+                        else
+                        {
+                            Debug.Fail("Figure out whoever owns this.");
+                        }
+
+                        return block;
+                    }
+
                     // This has been a bit of a headache, but if this is an "if else" and the current connection
                     // is not the same, we'll convert this later.
                     kind = RelationshipKind.Next;
@@ -331,6 +386,10 @@ namespace Whispers.InnerThoughts
             return block;
         }
 
+        /// <summary>
+        /// Find all leaf nodes eligible to be joined.
+        /// This will disregard nodes that are already dead (due to a goto!).
+        /// </summary>
         private void FindAllLeaves(int block, ref List<int> result)
         {
             if (BlocksRelationship.TryGetValue(block, out Relationship? relationship))
@@ -342,8 +401,11 @@ namespace Whispers.InnerThoughts
             }
             else
             {
-                // This doesn't point to any other blocks - so it's a leaf!
-                result.Add(block);
+                if (!_blocksWithGoto.Contains(block))
+                {
+                    // This doesn't point to any other blocks - so it's a leaf!
+                    result.Add(block);
+                }
             }
         }
 
@@ -354,10 +416,26 @@ namespace Whispers.InnerThoughts
         {
             Debug.Assert(_relationships.Count != 0, "This should only be called with a previous relationship.");
 
+            bool hasAnyBlocks = _lastBlocks.Count != 0;
+
+            // Get rid of the last block prior to the join, if any.
+            if (hasAnyBlocks)
+            {
+                _ = _lastBlocks.TryPop(out _);
+                _ = _lastBlocks.TryPop(out _);
+            }
+
             Block joinedBlock = CreateBlock(playUntil, track: true);
+
+            if (!hasAnyBlocks && _relationships.Count == 1)
+            {
+                NextBlocks.Add(joinedBlock.Id);
+            }
 
             List<int> blocksThatWillBeJoined = _relationships.Peek().Blocks;
             List<int> leafBlocks = new();
+
+            _ = _relationships.Pop();
 
             // Now, for each of those blocks, we'll collect all of its leaves and add edges to it.
             foreach (int blockToJoin in blocksThatWillBeJoined)
@@ -420,6 +498,7 @@ namespace Whispers.InnerThoughts
             if (relationship.Blocks.Count == 0)
             {
                 _ = _relationships.Pop();
+                _ = _lastBlocks.Pop();
             }
             else
             {
@@ -441,12 +520,16 @@ namespace Whispers.InnerThoughts
             }
         }
 
-        public void ExitCurrentBlock()
+        private readonly HashSet<int> _blocksWithGoto = new();
+
+        public void MarkGotoOnBlock(int block, bool isExit)
         {
-            // TODO: I don't think Clear() is the best way to go here. Figure out.
-            // Clear the relationships stack.
-            _relationships.Clear();
-            _lastBlocks.Clear();
+            if (isExit)
+            {
+                Blocks[block].Exit();
+            }
+
+            _ = _blocksWithGoto.Add(block);
         }
     }
 }

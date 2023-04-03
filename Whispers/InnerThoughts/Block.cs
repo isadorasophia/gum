@@ -23,8 +23,9 @@ namespace Whispers.InnerThoughts
 
         /// <summary>
         /// Go to another dialog with a specified id.
+        /// If this is -1, it will immediately exit the dialog interaction.
         /// </summary>
-        public readonly int? GoTo = null;
+        public int? GoTo = null;
 
         public Block() { }
 
@@ -46,6 +47,11 @@ namespace Whispers.InnerThoughts
         {
             Actions ??= new();
             Actions.Add(action);
+        }
+
+        public void Exit()
+        {
+            GoTo = -1;
         }
 
         public string DebuggerDisplay()
