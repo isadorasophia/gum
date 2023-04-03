@@ -14,6 +14,11 @@ namespace Whispers.InnerThoughts
         public RelationshipKind Kind = RelationshipKind.Next;
 
         /// <summary>
+        /// List of owners that currently have this relationship.
+        /// </summary>
+        public readonly List<int> Owners = new();
+
+        /// <summary>
         /// Blocks, in order, which will be subjected to a scan according to <see cref="Kind"/>.
         /// </summary>
         public readonly List<int> Blocks = new();

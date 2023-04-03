@@ -4,7 +4,7 @@ namespace Whispers.InnerThoughts
 {
     public enum CriterionKind
     {
-        [TokenName("Is")]
+        [TokenName("is")]
         Is,             // Boolean, integer or string comparison
         [TokenName("<")]
         Less,           // Integer comparison

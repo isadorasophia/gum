@@ -52,7 +52,7 @@ namespace Whispers.InnerThoughts
         {
             StringBuilder result = new();
             _ = result.Append(
-                $"[Requirements = {Requirements.Count}, Lines = {Lines.Count}, Actions = {Actions?.Count ?? 0}]");
+                $"[{Id}, Requirements = {Requirements.Count}, Lines = {Lines.Count}, Actions = {Actions?.Count ?? 0}]");
 
             return result.ToString();
         }

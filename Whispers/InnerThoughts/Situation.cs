@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
 
 namespace Whispers.InnerThoughts
 {
@@ -23,6 +24,8 @@ namespace Whispers.InnerThoughts
         /// </summary>
         private readonly Stack<Relationship> _relationships  = new();
 
+        private readonly Stack<int> _lastBlocks = new();
+
         public Situation() { }
 
         public Situation(int id, string name)
@@ -45,12 +48,50 @@ namespace Whispers.InnerThoughts
                 return true;
             }
 
+            int length = lastRelationship.Blocks.Count;
+            Debug.Assert(length != 0, "We expect that the last block added will be the block subjected to the " +
+                "relationship switch.");
+
+            Relationship? relationship;
+            Block empty;
+
             switch (kind)
             {
                 case RelationshipKind.Next:
-                case RelationshipKind.HighestScore:
                 case RelationshipKind.Random:
                     lastRelationship.Kind = kind;
+                    return true;
+
+                case RelationshipKind.Choice:
+                case RelationshipKind.HighestScore:
+                    if (length == 1)
+                    {
+                        lastRelationship.Kind = kind;
+                    }
+                    else
+                    {
+                        Debug.Fail("I don't understand this scenario fully, please debug this.");
+                        //int choiceBlock = lastRelationship.Blocks[length - 1];
+
+                        //// "Grab" the first block, so it now points to the new relationship created.
+                        //int previousBlock = lastRelationship.Blocks[length - 2];
+
+                        //_ = lastRelationship.Blocks.Remove(choiceBlock);
+
+                        //if (!BlocksRelationship.TryGetValue(previousBlock, out relationship))
+                        //{
+                        //    relationship = CreateRelationship(kind);
+                        //    relationship.Blocks.Add(choiceBlock);
+
+                        //    LinkRelationship(previousBlock, relationship);
+                        //}
+                        //else
+                        //{
+                        //    relationship.Blocks.Add(choiceBlock);
+                        //    empty = CreateBlock(playUntil: ifBlock.PlayUntil, track: false);
+                        //}
+                    }
+
                     return true;
 
                 case RelationshipKind.IfElse:
@@ -60,19 +101,56 @@ namespace Whispers.InnerThoughts
                     // This assumes that the 'else' block has already been inserted into the relationship
                     // and corresponds to the last added block.
 
-                    int length = lastRelationship.Blocks.Count;
-
                     // First, rearrange our current expectations.
-                    if (length <= 1)
+                    if (length == 1)
                     {
+                        // Okay, so what happened is that we have an if node point to another node, which is
+                        // actually an else.
+                        // To fix this, we'll create a ~ghost~ node and use that to create the if/else relationship.
+                        // However! We will persist the properties of the first block.
+                        if (lastRelationship.Owners.Count > 2)
+                        {
+                            throw new InvalidOperationException("☠️ Error on the implementation! " +
+                                "Somehow, you managed to get into a state where a 'else' relationship is grabbing a link from two different" +
+                                "nodes. I wasn't sure if this was even possible. Could you report this?");
+                        }
+
+                        Block ifBlock = Blocks[lastRelationship.Owners[0]];
+                        int elseBlock = lastRelationship.Blocks[0];
+
+                        _ = _lastBlocks.Pop();
+                        _ = _lastBlocks.Pop();
+
+                        _lastBlocks.Push(elseBlock);
+
+                        empty = CreateBlock(playUntil: ifBlock.PlayUntil, track: false);
+
+                        _ = BlocksRelationship.Remove(ifBlock.Id);
+                        _ = _relationships.Pop();
+
+                        int ifBlockPosition = NextBlocks.IndexOf(ifBlock.Id);
+                        NextBlocks[ifBlockPosition] = empty.Id;
+
+                        relationship = CreateRelationship(kind);
+
+                        relationship.Blocks.Add(ifBlock.Id);
+                        relationship.Blocks.Add(elseBlock);
+
+                        LinkRelationship(empty.Id, relationship);
+
                         // We found an else block without any prior block, other than ourselves!
-                        return false;
                     }
                     else if (length == 2)
                     {
                         // Only if + else here, all good.
                         lastRelationship.Kind = kind;
-                        return true;
+
+                        int elseBlock = lastRelationship.Blocks[length - 1];
+
+                        _ = _lastBlocks.Pop();
+                        _ = _lastBlocks.Pop();
+
+                        _lastBlocks.Push(elseBlock);
                     }
                     else
                     {
@@ -84,15 +162,20 @@ namespace Whispers.InnerThoughts
                         _ = lastRelationship.Blocks.Remove(ifBlock);
                         _ = lastRelationship.Blocks.Remove(elseBlock);
 
-                        // "Grab" the first block, so it now points to the new relationship created.
-                        int lastBlock = lastRelationship.Blocks[length - 3];
+                        _ = _lastBlocks.Pop();
+                        _ = _lastBlocks.Pop();
 
-                        Relationship relationship = new(kind);
+                        _lastBlocks.Push(elseBlock);
+
+                        // "Grab" the first block, so it now points to the new relationship created.
+                        int previousBlock = lastRelationship.Blocks[length - 3];
+
+                        relationship = CreateRelationship(kind);
 
                         relationship.Blocks.Add(ifBlock);
                         relationship.Blocks.Add(elseBlock);
 
-                        BlocksRelationship.Add(lastBlock, relationship);
+                        LinkRelationship(previousBlock, relationship);
                     }
 
                     return true;
@@ -104,14 +187,114 @@ namespace Whispers.InnerThoughts
         /// <summary>
         /// Creates a new block and assign an id to it.
         /// </summary>
-        private Block CreateBlock(int playUntil)
+        private Block CreateBlock(int playUntil, bool track)
         {
             int id = Blocks.Count;
             Block block = new(id, playUntil);
 
             Blocks.Add(block);
 
+            if (track)
+            {
+                _lastBlocks.Push(id);
+            }
+
             return block;
+        }
+
+        /// <summary>
+        /// Creates a new empty with a set number of occurrences.
+        /// </summary>
+        public Block AddBlock(int playUntil, bool join, bool isNested, RelationshipKind kind = RelationshipKind.Next)
+        {
+            if (join && _relationships.Count > 0)
+            {
+                return CreateBlockWithJoin(playUntil);
+            }
+
+            bool hasBlocks = _lastBlocks.TryPeek(out int lastBlock); // Needed if we need to nest blocks.
+
+            Relationship? relationship;
+            Block block = CreateBlock(playUntil, track: true);
+
+            // If this was called right after a situation has been declared, it'll think that it is a nested block
+            // (when it's not really).
+            if (isNested && hasBlocks)
+            {
+                if (hasBlocks)
+                {
+                    if (!BlocksRelationship.TryGetValue(lastBlock, out relationship))
+                    {
+                        relationship = CreateRelationship(RelationshipKind.Next);
+                        LinkRelationship(lastBlock, relationship);
+                    }
+
+                    relationship.Blocks.Add(block.Id);
+                }
+                else
+                {
+                    relationship = CreateRelationship(RelationshipKind.Next);
+                    relationship.Blocks.Add(block.Id);
+
+                    LinkRelationship(lastBlock, relationship);
+                }
+                
+                if (relationship.Kind != RelationshipKind.Next)
+                {
+                    relationship = CreateRelationship(kind);
+                    LinkRelationship(block.Id, relationship);
+                }
+            }
+            else if (!hasBlocks)
+            {
+                NextBlocks.Add(block.Id);
+
+                relationship = CreateRelationship(kind);
+                LinkRelationship(block.Id, relationship);
+            }
+            else
+            {
+                Relationship target = _relationships.Peek();
+
+                if (kind == RelationshipKind.Choice && _lastBlocks.Count > 2)
+                {
+                    int parent = _lastBlocks.ElementAt(2);
+                    if (BlocksRelationship.TryGetValue(parent, out relationship) && 
+                        relationship.Kind == RelationshipKind.Choice)
+                    {
+                        target = relationship;
+                    }
+                }
+
+                if (target.Kind != kind && target.Blocks.Count == 0)
+                {
+                    target.Kind = kind;
+                }
+                else if (target.Kind != kind)
+                { 
+                    Debug.Fail("Implement this!"); 
+                }
+
+                target.Blocks.Add(block.Id);
+            }
+
+            return block;
+        }
+
+        private void FindAllLeaves(int block, ref List<int> result)
+        {
+            if (BlocksRelationship.TryGetValue(block, out Relationship? relationship))
+            {
+                foreach (int otherBlock in relationship.Blocks)
+                {
+                    FindAllLeaves(otherBlock, ref result);
+                }
+            }
+            else
+            {
+                // This doesn't point to any other blocks - so it's a leaf!
+                result.Add(block);
+            }
         }
 
         /// <summary>
@@ -121,66 +304,100 @@ namespace Whispers.InnerThoughts
         {
             Debug.Assert(_relationships.Count != 0, "This should only be called with a previous relationship.");
 
-            Block joinedBlock = CreateBlock(playUntil);
+            Block joinedBlock = CreateBlock(playUntil, track: true);
 
             List<int> blocksThatWillBeJoined = _relationships.Peek().Blocks;
+            List<int> leafBlocks = new();
 
-            // Start by creating a link between previous blocks and this new one.
-            Relationship relationship = new(RelationshipKind.Next);
-            relationship.Blocks.Add(joinedBlock.Id);
-
-            _relationships.Push(relationship);
-
-            foreach (int i in blocksThatWillBeJoined)
+            // Now, for each of those blocks, we'll collect all of its leaves and add edges to it.
+            foreach (int blockToJoin in blocksThatWillBeJoined)
             {
-                BlocksRelationship.Add(i, relationship);
+                FindAllLeaves(blockToJoin, ref leafBlocks);
             }
 
-            // Finally, create a relationship for the block itself.
-            relationship = new(RelationshipKind.Next);
-            BlocksRelationship.Add(joinedBlock.Id, relationship);
+            // Start by creating a link between previous blocks and this new one.
+            Relationship relationship = CreateRelationship(RelationshipKind.Next, stack: false);
+            relationship.Blocks.Add(joinedBlock.Id);
+
+            foreach (int i in leafBlocks)
+            {
+                LinkRelationship(i, relationship);
+            }
+
+            // Finally, create a new relationship for the block itself.
+            relationship = CreateRelationship(RelationshipKind.Next);
+            LinkRelationship(joinedBlock.Id, relationship);
 
             return joinedBlock;
         }
 
-        /// <summary>
-        /// Creates a new empty with a set number of occurrences.
-        /// </summary>
-        public Block AddChildBlock(int playUntil, bool join)
+        private Relationship CreateRelationship(RelationshipKind kind, bool stack = true)
         {
-            if (join || _relationships.Count == 0)
-            {
-                // This is actually the first block here, so create a new block instead.
-                return CreateBlock(playUntil, join, RelationshipKind.Next);
-            }
-
-            Block block = CreateBlock(playUntil);
-
-            _relationships.Peek().Blocks.Add(block.Id);
-            return block;
-        }
-
-        /// <summary>
-        /// Creates a new empty with a set number of occurrences.
-        /// </summary>
-        public Block CreateBlock(int playUntil, bool join, RelationshipKind kind)
-        {
-            if (join && _relationships.Count > 0)
-            {
-                return CreateBlockWithJoin(playUntil);
-            }
-
-            // Create the empty block.
-            Block block = CreateBlock(playUntil);
-
-            NextBlocks.Add(block.Id);
-
             Relationship relationship = new(kind);
 
-            _relationships.Push(relationship);
-            BlocksRelationship.Add(block.Id, relationship);
+            if (stack)
+            {
+                _relationships.Push(relationship);
+            }
 
-            return block;
+            return relationship;
+        }
+
+        private void LinkRelationship(int id, Relationship relationship)
+        {
+            BlocksRelationship.Add(id, relationship);
+            relationship.Owners.Add(id);
+        }
+
+        public void PopLastBlock()
+        {
+            if (_lastBlocks.Count == 0)
+            {
+                return;
+            }
+
+            _ = _lastBlocks.Pop();
+        }
+
+        public void PopLastRelationship()
+        {
+            if (!_relationships.TryPeek(out Relationship? relationship))
+            {
+                // No op.
+                return;
+            }
+
+            if (relationship.Blocks.Count == 0)
+            {
+                _ = _relationships.Pop();
+            }
+            else
+            {
+                foreach (int i in relationship.Blocks)
+                {
+                    _ = _lastBlocks.Pop();
+                }
+
+                if (relationship.Kind == RelationshipKind.Random)
+                {
+                    _ = _relationships.Pop();
+                    _ = _relationships.Pop();
+                    _ = _lastBlocks.Pop();
+                }
+                else if (relationship.Kind == RelationshipKind.Choice)
+                {
+                    _ = _relationships.Pop();
+                    _ = _lastBlocks.Pop();
+                }
+            }
+        }
+
+        public void ExitCurrentBlock()
+        {
+            // TODO: I don't think Clear() is the best way to go here. Figure out.
+            // Clear the relationships stack.
+            _relationships.Clear();
+            _lastBlocks.Clear();
         }
     }
 }

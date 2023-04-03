@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using System.Diagnostics;
+using Whispers.Utilities;
 
 namespace Whispers.InnerThoughts
 {
@@ -61,7 +62,14 @@ namespace Whispers.InnerThoughts
         {
             StringBuilder result = new();
 
-            result = result.Append($"{Fact.Name}: {Kind}");
+            if (Fact.Kind == FactKind.Component)
+            {
+                result = result.Append($"[c:");
+            }
+            else
+            {
+                result = result.Append($"[{Fact.Name} {OutputHelpers.ToCustomString(Kind)} ");
+            }
 
             switch (Fact.Kind)
             {
@@ -81,6 +89,8 @@ namespace Whispers.InnerThoughts
                     result = result.Append(IntValue);
                     break;
             }
+
+            _ = result.Append(']');
 
             return result.ToString();
         }

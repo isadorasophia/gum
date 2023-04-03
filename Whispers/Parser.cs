@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using System.Threading.Tasks.Dataflow;
 using Whispers.InnerThoughts;
 using Whispers.Utilities;
 
@@ -153,6 +154,7 @@ namespace Whispers
             if (line.IsEmpty) return true;
 
             bool hasCreatedJoinBlock = false;
+            bool isNestedBlock = false;
 
             // If this is not a situation declaration ('=') but a situation has not been declared yet!
             if (line[0] != (char)TokenChar.Situation && _script.HasCurrentSituation is false)
@@ -173,14 +175,63 @@ namespace Whispers
                         {
                             case TokenChar.BeginCondition:
                                 createJoinBlock = false;
+
+                                if (_lastIndentationIndex - _indentationIndex > 1)
+                                {
+                                    _script.CurrentSituation.PopLastRelationship();
+                                }
+
+                                break;
+
+                            case TokenChar.Situation:
+                            case TokenChar.OptionBlock:
+                            case TokenChar.MultipleBlock:
+                            case TokenChar.OnceBlock:
+                                _script.CurrentSituation.PopLastRelationship();
+                                if (line.Length > 1 && line[1] == (char)TokenChar.OptionBlock)
+                                {
+                                    // Actually a ->
+                                    break;
+                                }
+
+                                createJoinBlock = false;
+                                break;
+
+                            default:
+                                _script.CurrentSituation.PopLastRelationship();
                                 break;
                         }
                     }
 
                     if (createJoinBlock)
                     {
-                        _currentBlock = _script.CurrentSituation.AddChildBlock(ConsumePlayUntil(), join: true).Id;
+                        _currentBlock = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), join: true, isNested: false).Id;
                         hasCreatedJoinBlock = true;
+                    }
+                }
+                else if (_indentationIndex > _lastIndentationIndex)
+                {
+                    // May be used if we end up creating a new block.
+                    isNestedBlock = true;
+
+                    if (Enum.IsDefined(typeof(TokenChar), (int)line[0]))
+                    {
+                        switch ((TokenChar)line[0])
+                        {
+                            case TokenChar.BeginAction:
+                            case TokenChar.OnceBlock:
+                                if (line.Length == 1 || line[1] != (char)TokenChar.OptionBlock)
+                                {
+                                    // Actually a -
+                                    break;
+                                }
+
+                                // These won't create a block by default, so let's make sure that is the case when the indentation happens.
+                                _currentBlock = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), join: false, isNested: true).Id;
+                                isNestedBlock = false;
+
+                                break;
+                        }
                     }
                 }
             }
@@ -229,8 +280,8 @@ namespace Whispers
                             }
                             else
                             {
-                                _currentBlock = _script.CurrentSituation.CreateBlock(
-                                    ConsumePlayUntil(), join: false, RelationshipKind.Random).Id;
+                                _currentBlock = _script.CurrentSituation.AddBlock(
+                                    ConsumePlayUntil(), join: false, isNestedBlock, RelationshipKind.Random).Id;
                             }
                         }
                         else if (TryReadInteger(command) is int number)
@@ -275,7 +326,7 @@ namespace Whispers
 
                         if (!hasCreatedJoinBlock)
                         {
-                            _currentBlock = _script.CurrentSituation.AddChildBlock(ConsumePlayUntil(), join: false).Id;
+                            _currentBlock = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), join: false, isNestedBlock).Id;
                         }
 
                         line = line.Slice(0, endColumn);
@@ -310,7 +361,17 @@ namespace Whispers
                             return ParseGoto(line, index, column);
                         }
 
-                        break;
+                        _playUntil = 1;
+                        return ParseOption(line, index, column);
+
+                    // +
+                    case TokenChar.MultipleBlock:
+                        _playUntil = -1;
+                        return ParseOption(line, index, column);
+
+                    // >
+                    case TokenChar.OptionBlock:
+                        return ParseChoice(line, index, column);
 
                     default:
                         return true;
@@ -329,12 +390,34 @@ namespace Whispers
             return true;
         }
 
+        private bool ParseChoice(ReadOnlySpan<char> line, int index, int column)
+        {
+            _currentBlock = _script.CurrentSituation.AddBlock(
+                    ConsumePlayUntil(), join: false, isNested: false, RelationshipKind.Choice).Id;
+
+            line = line.TrimStart().TrimEnd();
+            Block.AddLine(line);
+
+            return true;
+        }
+
+        private bool ParseOption(ReadOnlySpan<char> line, int _, int __)
+        {
+            _currentBlock = _script.CurrentSituation.AddBlock(
+                    ConsumePlayUntil(), join: false, isNested: false).Id;
+
+            line = line.TrimStart().TrimEnd();
+            Block.AddLine(line);
+
+            return true;
+        }
+
         private bool ParseLine(ReadOnlySpan<char> line, int _, int __)
         {
             if (_script.CurrentSituation.Blocks.Count == 0)
             {                      
-                _currentBlock = _script.CurrentSituation.CreateBlock(
-                    ConsumePlayUntil(), false, RelationshipKind.Next).Id;
+                _currentBlock = _script.CurrentSituation.AddBlock(
+                    ConsumePlayUntil(), join: false, isNested: false, RelationshipKind.Next).Id;
             }
 
             // This is probably just a line! So let's just read as it is.
@@ -361,13 +444,16 @@ namespace Whispers
                 return false;
             }
             
-            // If this is an 'exit!' keyword, finalize right away.
-            if (MemoryExtensions.Equals(line, "exit!", StringComparison.OrdinalIgnoreCase))
+            if (MemoryExtensions.Equals(location, "exit!", StringComparison.OrdinalIgnoreCase))
             {
-
+                // If this is an 'exit!' keyword, finalize right away.
+                _script.CurrentSituation.ExitCurrentBlock();
             }
-
-            _gotoDestinations.Add((Block, location.ToString(), lineIndex));
+            else
+            {
+                // Otherwise, keep track of this and add at the end.
+                _gotoDestinations.Add((Block, location.ToString(), lineIndex));
+            }
 
             return true;
         }

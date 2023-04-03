@@ -21,6 +21,11 @@
         /// <summary>
         /// All the blocks that are next are subjected to an "else" relationship.
         /// </summary>
-        IfElse = 4
+        IfElse = 4,
+
+        /// <summary>
+        /// Choice dialogs (>) that the player can pick.
+        /// </summary>
+        Choice = 5
     }
 }

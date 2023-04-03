@@ -198,7 +198,7 @@ namespace Whispers
                     return false;
                 }
 
-                if (!ReadFactValue(line, out expectedFact, out ruleValue))
+                if (!ReadFactValue(specifier, out expectedFact, out ruleValue))
                 {
                     OutputInvalidRuleValueSpecifier(specifier, lineIndex, currentColumn);
                     return false;

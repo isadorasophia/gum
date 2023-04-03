@@ -1,5 +1,9 @@
-﻿namespace Whispers.InnerThoughts
+﻿using System.Diagnostics;
+using Whispers.Utilities;
+
+namespace Whispers.InnerThoughts
 {
+    [DebuggerDisplay("{DebuggerDisplay(),nq}")]
     public readonly struct CriterionNode
     {
         public readonly Criterion Criterion = new();
@@ -16,5 +20,10 @@
         public CriterionNode WithCriterion(Criterion criterion) => new(criterion, Kind);
 
         public CriterionNode WithKind(CriterionNodeKind kind) => new(Criterion, kind);
+
+        public string DebuggerDisplay()
+        {
+            return $"{OutputHelpers.ToCustomString(Kind)} {Criterion.DebuggerDisplay()}";
+        }
     }
 }

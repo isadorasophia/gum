@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Text;
 using Whispers.Blackboards;
+using Whispers.Utilities;
 
 namespace Whispers.InnerThoughts
 {
@@ -62,7 +63,7 @@ namespace Whispers.InnerThoughts
             }
             else
             {
-                result = result.Append($"[{Fact.Name} {Kind.ToString().ToLowerInvariant()} ");
+                result = result.Append($"[{Fact.Name} {OutputHelpers.ToCustomString(Kind)} ");
             }
 
             switch (Fact.Kind)

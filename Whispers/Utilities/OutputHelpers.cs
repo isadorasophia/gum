@@ -1,4 +1,5 @@
 ﻿using System;
+using Whispers.Attributes;
 
 namespace Whispers.Utilities
 {
@@ -55,6 +56,15 @@ namespace Whispers.Utilities
                 Console.Write($"☝️");
             }
             Console.Write($" {issue}");
+        }
+
+        public static string ToCustomString<T>(this T value) where T : Enum
+        {
+            TokenNameAttribute[] attributes = (TokenNameAttribute[])typeof(T)
+                .GetField(value.ToString())!
+                .GetCustomAttributes(typeof(TokenNameAttribute), false);
+
+            return attributes.Length > 0 ? attributes[0].Name : value.ToString();
         }
     }
 }
