@@ -1,0 +1,130 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Gum",
+	"patterns": [
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#variables"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [
+				{
+					"begin": "(?=\\()",
+					"end": "(?<=\\))",
+					"name": "keyword.control.condition",
+					"patterns": [
+						{
+							"include": "#expressions"
+						}
+					]
+				},
+				{
+					"begin": "(?=\\[)",
+					"end": "(?<=\\])",
+					"name": "keyword.control.action.gum",
+					"patterns": [
+						{
+							"include": "#expressions"
+						}
+					]
+				},
+				{
+					"begin": "(?=\\{)",
+					"end": "(?<=\\})",
+					"name": "string.quoted.double.blackboard.gum",
+					"patterns": [
+						{
+							"include": "#expressions"
+						}
+					]
+				},
+				{
+					"match": "\\w+[?=\\.]?\\w+:",
+					"name": "string.quoted.double.speaker.gum"
+				},
+				{
+					"match": "\\@[0-9]",
+					"name": "constant.numeric.flow.gum"
+				},
+				{
+					"match": "\\@random",
+					"name": "constant.numeric.flow.random.gum"
+				},
+				{
+					"match": "\\+",
+					"name": "constant.numeric.playmore.gum"
+				},
+				{
+					"match": "\\-(?!>)",
+					"name": "constant.numeric.playonce.gum"
+				},
+				{
+					"begin": "(?=>)",
+					"end": "(?=$)",
+					"name": "constant.numeric.arrow.gum"
+				},
+				{
+					"begin": "(?=\\->)",
+					"end": "(?=$)",
+					"name": "entity.other.inherited-class.gum"
+				}
+			]
+		},
+		"variables": {
+			"patterns": [
+				{
+					"begin": "(?=\\=)",
+					"end": "(?=$)",
+					"name": "entity.name.class.gum"
+				}
+			]
+		},
+		"strings": {
+			"name": "string.quoted.double.gum",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.gum",
+					"match": "\\\\."
+				}
+			]
+		},
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line.gum",
+					"begin": "(^\\s+)?(?=//)",
+					"end": "(?=$)"
+				}
+			]
+		},
+		"expressions": {
+			"patterns": [
+				{
+					"match": "\\b(false|true|[0-9])\\b",
+					"name": "storage.type.gum"
+				},
+				{
+					"name": "keyword.operator.assignment.compound.gum",
+					"match": "\\=|<=|>=|<|>|c:|i:"
+				},
+				{
+					"name": "entity.other.attribute-name.gum",
+					"match": "!|\\.\\.\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.gum"
+}

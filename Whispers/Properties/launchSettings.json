@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "Whispers": {
-      "commandName": "Project",
-      "commandLineArgs": "\"C:\\Users\\isaec\\OneDrive\\Road 1\\dialogs_test\" \".\\output\""
-    }
-  }
-}

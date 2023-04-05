@@ -1,0 +1,28 @@
+{
+  "name": "gum",
+  "displayName": "Gum Extension",
+  "description": "Provides syntax highlighting and other niceties when programming with Gum!",
+  "publisher": "murder",
+  "repository": "https://github.com/isadorasophia/gum",
+  "license": "MIT",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.76.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "gum",
+      "aliases": ["Gum", "gum"],
+      "extensions": [".gum"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "gum",
+      "scopeName": "source.gum",
+      "path": "./syntaxes/gum.tmLanguage.json"
+    }]
+  }
+}

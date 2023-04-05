@@ -11,3 +11,4 @@ src/Editor/editor_config.json
 src/InstallWizard/Content/data/Generated
 src/InstallWizard/Content/data/Save
 *.user
+*.vsix
