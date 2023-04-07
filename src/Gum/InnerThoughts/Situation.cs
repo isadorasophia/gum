@@ -19,12 +19,23 @@ namespace Gum.InnerThoughts
         /// </summary>
         public readonly List<int> NextBlocks = new();
 
-        public readonly Dictionary<int, Relationship> BlocksRelationship = new();
+        /// <summary>
+        /// This points
+        /// [ Node Id -> Edge ]
+        /// </summary>
+        public readonly Dictionary<int, Edge> Edges = new();
 
         /// <summary>
-        /// Track the relationships when adding those values.
+        /// This points
+        /// [ Node Id -> Parent ]
+        /// If parent is empty, this is at the top.
         /// </summary>
-        private readonly Stack<Relationship> _relationships  = new();
+        public readonly Dictionary<int, HashSet<int>> ParentOf = new();
+
+        /// <summary>
+        /// Track the edges when adding those values.
+        /// </summary>
+        private readonly Stack<Edge> _lastEdges  = new();
 
         private readonly Stack<int> _lastBlocks = new();
 
@@ -34,64 +45,53 @@ namespace Gum.InnerThoughts
         {
             Id = id;
             Name = name;
+
+            // Add a root node.
+            //Block block = CreateBlock(playUntil: -1, track: true);
+            //Edge edge = CreateEdge(RelationshipKind.Next);
+
+            //AssignOwnerToEdge(block.Id, edge);
         }
 
         public bool SwitchRelationshipTo(RelationshipKind kind)
         {
-            if (!_relationships.TryPeek(out Relationship? lastRelationship))
+            if (!_lastEdges.TryPeek(out Edge? lastEdge))
             {
                 throw new InvalidOperationException("☠️ Error on the implementation! " +
                     "Why are we assuming a relationship exists here?");
             }
             
-            if (lastRelationship.Kind == kind)
+            if (lastEdge.Kind == kind)
             {
                 // No operation, relationship is already set.
                 return true;
             }
 
-            int length = lastRelationship.Blocks.Count;
+            int length = lastEdge.Blocks.Count;
             Debug.Assert(length != 0, "We expect that the last block added will be the block subjected to the " +
                 "relationship switch.");
 
-            Relationship? relationship;
+            Edge? edge;
             Block empty;
 
             switch (kind)
             {
                 case RelationshipKind.Next:
                 case RelationshipKind.Random:
-                    lastRelationship.Kind = kind;
+                    lastEdge.Kind = kind;
                     return true;
 
                 case RelationshipKind.Choice:
                 case RelationshipKind.HighestScore:
                     if (length == 1)
                     {
-                        lastRelationship.Kind = kind;
+                        lastEdge.Kind = kind;
                     }
                     else
                     {
                         Debug.Fail("I don't understand this scenario fully, please debug this.");
-                        //int choiceBlock = lastRelationship.Blocks[length - 1];
 
-                        //// "Grab" the first block, so it now points to the new relationship created.
-                        //int previousBlock = lastRelationship.Blocks[length - 2];
-
-                        //_ = lastRelationship.Blocks.Remove(choiceBlock);
-
-                        //if (!BlocksRelationship.TryGetValue(previousBlock, out relationship))
-                        //{
-                        //    relationship = CreateRelationship(kind);
-                        //    relationship.Blocks.Add(choiceBlock);
-
-                        //    LinkRelationship(previousBlock, relationship);
-                        //}
-                        //else
-                        //{
-                        //    relationship.Blocks.Add(choiceBlock);
-                        //    empty = CreateBlock(playUntil: ifBlock.PlayUntil, track: false);
-                        //}
+                        // Remove the last block and create a new one?
                     }
 
                     return true;
@@ -107,15 +107,15 @@ namespace Gum.InnerThoughts
                         // actually an else.
                         // To fix this, we'll create a ~ghost~ node and use that to create the if/else relationship.
                         // However! We will persist the properties of the first block.
-                        if (lastRelationship.Owners.Count > 2)
+                        if (lastEdge.Owners.Count > 2)
                         {
                             throw new InvalidOperationException("☠️ Error on the implementation! " +
                                 "Somehow, you managed to get into a state where a 'else' relationship is grabbing a link from two different" +
                                 "nodes. I wasn't sure if this was even possible. Could you report this?");
                         }
 
-                        Block ifBlock = Blocks[lastRelationship.Owners[0]];
-                        int elseBlock = lastRelationship.Blocks[0];
+                        Block ifBlock = Blocks[lastEdge.Owners[0]];
+                        int elseBlock = lastEdge.Blocks[0];
 
                         _ = _lastBlocks.Pop();
                         _ = _lastBlocks.Pop();
@@ -124,27 +124,26 @@ namespace Gum.InnerThoughts
 
                         empty = CreateBlock(playUntil: ifBlock.PlayUntil, track: false);
 
-                        _ = BlocksRelationship.Remove(ifBlock.Id);
-                        _ = _relationships.Pop();
+                        _ = Edges.Remove(ifBlock.Id);
+                        _ = _lastEdges.Pop();
 
-                        int ifBlockPosition = NextBlocks.IndexOf(ifBlock.Id);
-                        NextBlocks[ifBlockPosition] = empty.Id;
+                        ReplaceEdgesToNodeWith(ifBlock.Id, empty.Id);
 
-                        relationship = CreateRelationship(kind);
+                        edge = CreateEdge(kind);
 
-                        relationship.Blocks.Add(ifBlock.Id);
-                        relationship.Blocks.Add(elseBlock);
+                        AddNode(edge, ifBlock.Id);
+                        AddNode(edge, elseBlock);
 
-                        LinkRelationship(empty.Id, relationship);
+                        AssignOwnerToEdge(empty.Id, edge);
 
                         // We found an else block without any prior block, other than ourselves!
                     }
                     else if (length == 2)
                     {
                         // Only if + else here, all good.
-                        lastRelationship.Kind = kind;
+                        lastEdge.Kind = kind;
 
-                        int elseBlock = lastRelationship.Blocks[length - 1];
+                        int elseBlock = lastEdge.Blocks[length - 1];
 
                         _ = _lastBlocks.Pop();
                         _ = _lastBlocks.Pop();
@@ -155,11 +154,11 @@ namespace Gum.InnerThoughts
                     {
                         // We need to get surgical about this.
                         // "Remove" the last block and move it to a new relationship.
-                        int ifBlock = lastRelationship.Blocks[length - 2];
-                        int elseBlock = lastRelationship.Blocks[length - 1];
+                        int ifBlock = lastEdge.Blocks[length - 2];
+                        int elseBlock = lastEdge.Blocks[length - 1];
 
-                        _ = lastRelationship.Blocks.Remove(ifBlock);
-                        _ = lastRelationship.Blocks.Remove(elseBlock);
+                        RemoveNode(lastEdge, ifBlock);
+                        RemoveNode(lastEdge, elseBlock);
 
                         _ = _lastBlocks.Pop();
                         _ = _lastBlocks.Pop();
@@ -167,14 +166,14 @@ namespace Gum.InnerThoughts
                         _lastBlocks.Push(elseBlock);
 
                         // "Grab" the first block, so it now points to the new relationship created.
-                        int previousBlock = lastRelationship.Blocks[length - 3];
+                        int previousBlock = lastEdge.Blocks[length - 3];
 
-                        relationship = CreateRelationship(kind);
+                        edge = CreateEdge(kind);
 
-                        relationship.Blocks.Add(ifBlock);
-                        relationship.Blocks.Add(elseBlock);
+                        AddNode(edge, ifBlock);
+                        AddNode(edge, elseBlock);
 
-                        LinkRelationship(previousBlock, relationship);
+                        AssignOwnerToEdge(previousBlock, edge);
                     }
 
                     return true;
@@ -184,30 +183,12 @@ namespace Gum.InnerThoughts
         }
 
         /// <summary>
-        /// Creates a new block and assign an id to it.
-        /// </summary>
-        private Block CreateBlock(int playUntil, bool track)
-        {
-            int id = Blocks.Count;
-            Block block = new(id, playUntil);
-
-            Blocks.Add(block);
-
-            if (track)
-            {
-                _lastBlocks.Push(id);
-            }
-
-            return block;
-        }
-
-        /// <summary>
         /// Creates a new block subjected to a <paramref name="kind"/> relationship.
         /// </summary>
         public Block AddBlock(int playUntil, bool join, bool isNested, RelationshipKind kind = RelationshipKind.Next)
         {
             // If this should actually join other nodes, make sure we do that.
-            if (join && _relationships.Count > 0)
+            if (join && _lastEdges.Count > 0)
             {
                 return CreateBlockWithJoin(playUntil);
             }
@@ -215,7 +196,7 @@ namespace Gum.InnerThoughts
             // We need to know the "parent" node when nesting blocks (make the parent -> point to the new block).
             bool hasBlocks = _lastBlocks.TryPeek(out int lastBlockId);
 
-            Relationship? relationship;
+            Edge? edge;
             Block block = CreateBlock(playUntil, track: true);
 
             // If this was called right after a situation has been declared, it'll think that it is a nested block
@@ -226,26 +207,26 @@ namespace Gum.InnerThoughts
                 // If there is a parent block that this can be nested to.
                 if (hasBlocks)
                 {
-                    if (!BlocksRelationship.TryGetValue(lastBlockId, out relationship))
+                    if (!Edges.TryGetValue(lastBlockId, out edge))
                     {
                         // The parent does not have an edge to other nodes. In that case, create one.
-                        relationship = CreateRelationship(kind);
-                        LinkRelationship(lastBlockId, relationship);
+                        edge = CreateEdge(kind);
+                        AssignOwnerToEdge(lastBlockId, edge);
                     }
 
-                    relationship.Blocks.Add(block.Id);
+                    AddNode(edge, block.Id);
                 }
                 else
                 {
-                    relationship = CreateRelationship(RelationshipKind.Next);
-                    relationship.Blocks.Add(block.Id);
+                    edge = CreateEdge(RelationshipKind.Next);
+                    AddNode(edge, block.Id);
 
-                    LinkRelationship(lastBlockId, relationship);
+                    AssignOwnerToEdge(lastBlockId, edge);
 
-                    if (relationship.Kind != RelationshipKind.Next)
+                    if (edge.Kind != RelationshipKind.Next)
                     {
-                        relationship = CreateRelationship(kind);
-                        LinkRelationship(block.Id, relationship);
+                        edge = CreateEdge(kind);
+                        AssignOwnerToEdge(block.Id, edge);
                     }
                 }
             }
@@ -254,84 +235,74 @@ namespace Gum.InnerThoughts
                 // This is actually a "root" node. Add it directly as the next available node and create a relationship.
                 NextBlocks.Add(block.Id);
 
-                relationship = CreateRelationship(kind);
-                LinkRelationship(block.Id, relationship);
+                edge = CreateEdge(kind);
+                AssignOwnerToEdge(block.Id, edge);
 
                 // This is actually a non-sequential node, so it can't be simply tracked in "NextBlocks".
                 // TODO: Remove NextBlocks?? I don't know why I added that.
                 if (!kind.IsSequential())
                 {
                     block = CreateBlock(playUntil, track: false);
-                    relationship.Blocks.Add(block.Id);
+                    AddNode(edge, block.Id);
                 }
             }
             else
             {
-                Relationship target = _relationships.Peek();
+                Edge targetEdge = _lastEdges.Peek();
 
                 if (kind == RelationshipKind.Choice && _lastBlocks.Count > 2)
                 {
                     int parent = _lastBlocks.ElementAt(2);
-                    if (BlocksRelationship.TryGetValue(parent, out relationship) && 
-                        relationship.Kind == RelationshipKind.Choice)
+                    if (Edges.TryGetValue(parent, out edge) && 
+                        edge.Kind == RelationshipKind.Choice)
                     {
-                        target = relationship;
+                        targetEdge = edge;
                     }
                 }
 
-                if (target.Kind != kind && target.Blocks.Count == 0 &&
+                if (targetEdge.Kind != kind && targetEdge.Blocks.Count == 0 &&
                     NextBlocks.Contains(lastBlockId) && kind == RelationshipKind.Next)
                 {
-                    _relationships.Clear();
+                    _lastEdges.Clear();
                     _lastBlocks.Clear();
                     _lastBlocks.Push(block.Id);
 
                     // This is actually a "root" node. Add it directly as the next available node and create a relationship.
                     NextBlocks.Add(block.Id);
 
-                    relationship = CreateRelationship(kind);
-                    LinkRelationship(block.Id, relationship);
+                    edge = CreateEdge(kind);
+                    AssignOwnerToEdge(block.Id, edge);
 
                     // This is actually a non-sequential node, so it can't be simply tracked in "NextBlocks".
                     // TODO: Remove NextBlocks?? I don't know why I added that.
                     if (!kind.IsSequential())
                     {
                         block = CreateBlock(playUntil, track: false);
-                        relationship.Blocks.Add(block.Id);
+                        AddNode(edge, block.Id);
                     }
 
                     return block;
                 }
 
-                if (kind == RelationshipKind.IfElse && target.Kind != kind)
+                if (kind == RelationshipKind.IfElse && targetEdge.Kind != kind)
                 {
-                    if (target.Kind != RelationshipKind.Next)
+                    if (targetEdge.Kind != RelationshipKind.Next)
                     {
                         _ = _lastBlocks.TryPop(out _);
                         _ = _lastBlocks.TryPop(out _);
 
                         _lastBlocks.Push(block.Id);
 
-                        _ = _relationships.TryPop(out _);
+                        _ = _lastEdges.TryPop(out _);
 
                         Block empty = CreateBlock(playUntil: -1, track: false);
+                        ReplaceEdgesToNodeWith(lastBlockId, empty.Id);
 
-                        target = CreateRelationship(kind);
+                        targetEdge = CreateEdge(kind);
 
-                        target.Blocks.Add(lastBlockId);
-                        target.Blocks.Add(block.Id);
-
-                        LinkRelationship(empty.Id, target);
-
-                        int lastBlockPosition = NextBlocks.IndexOf(lastBlockId);
-                        if (lastBlockPosition != -1)
-                        {
-                            NextBlocks[lastBlockPosition] = empty.Id;
-                        }
-                        else
-                        {
-                            Debug.Fail("Figure out whoever owns this.");
-                        }
+                        AddNode(targetEdge, lastBlockId);
+                        AddNode(targetEdge, block.Id);
+                        AssignOwnerToEdge(empty.Id, targetEdge);
 
                         return block;
                     }
@@ -340,48 +311,66 @@ namespace Gum.InnerThoughts
                     // is not the same, we'll convert this later.
                     kind = RelationshipKind.Next;
                 }
+                // If this is "intruding" an existing nested if-else.
+                //  (hasA)
+                //      (hasB)
+                //      (...)
+                //  (...)
+                else if (kind == RelationshipKind.IfElse && targetEdge.Kind == kind && lastBlockId == targetEdge.Owners[0])
+                {
+                    // This is copied and pasted from above. We will refactor this.
+                    _ = _lastBlocks.TryPop(out _);
+                    _ = _lastBlocks.TryPop(out _);
 
-                if (kind == RelationshipKind.HighestScore && target.Kind == RelationshipKind.Random)
+                    _lastBlocks.Push(block.Id);
+
+                    _ = _lastEdges.TryPop(out _);
+
+                    Block empty = CreateBlock(playUntil: -1, track: false);
+                    ReplaceEdgesToNodeWith(lastBlockId, empty.Id);
+
+                    targetEdge = CreateEdge(kind);
+
+                    AddNode(targetEdge, lastBlockId);
+                    AddNode(targetEdge, block.Id);
+                    AssignOwnerToEdge(empty.Id, targetEdge);
+
+                    return block;
+                }
+
+                if (kind == RelationshipKind.HighestScore && targetEdge.Kind == RelationshipKind.Random)
                 {
                     // A "HighestScore" kind when is matched with a "random" relationship, it is considered one of them
                     // automatically.
                     kind = RelationshipKind.Random;
                 }
 
-                if (target.Kind != kind && target.Blocks.Count == 0)
+                if (targetEdge.Kind != kind && targetEdge.Blocks.Count == 0)
                 {
-                    target.Kind = kind;
+                    targetEdge.Kind = kind;
                 }
-                else if (target.Kind != kind && kind == RelationshipKind.HighestScore)
+                else if (targetEdge.Kind != kind && kind == RelationshipKind.HighestScore)
                 {
-                    target = CreateRelationship(kind);
+                    targetEdge = CreateEdge(kind);
 
-                    LinkRelationship(lastBlockId, target);
+                    AssignOwnerToEdge(lastBlockId, targetEdge);
                 }
-                else if (target.Kind != kind)
+                else if (targetEdge.Kind != kind)
                 {
-                    _ = _relationships.Pop();
+                    _ = _lastEdges.Pop();
 
                     Block lastBlock = Blocks[lastBlockId];
+
                     Block empty = CreateBlock(playUntil: lastBlock.PlayUntil, track: false);
+                    ReplaceEdgesToNodeWith(lastBlockId, empty.Id);
 
-                    target = CreateRelationship(kind);
-                    target.Blocks.Add(lastBlock.Id);
+                    targetEdge = CreateEdge(kind);
 
-                    int lastBlockPosition = NextBlocks.IndexOf(lastBlockId);
-                    if (lastBlockPosition != -1)
-                    {
-                        NextBlocks[lastBlockPosition] = empty.Id;
-                    }
-                    else
-                    {
-                        Debug.Fail("Figure out whoever owns this.");
-                    }
-
-                    LinkRelationship(empty.Id, target);
+                    AddNode(targetEdge, lastBlock.Id);
+                    AssignOwnerToEdge(empty.Id, targetEdge);
                 }
 
-                target.Blocks.Add(block.Id);
+                AddNode(targetEdge, block.Id);
             }
 
             return block;
@@ -393,7 +382,7 @@ namespace Gum.InnerThoughts
         /// </summary>
         private void FindAllLeaves(int block, ref List<int> result)
         {
-            if (BlocksRelationship.TryGetValue(block, out Relationship? relationship))
+            if (Edges.TryGetValue(block, out Edge? relationship))
             {
                 foreach (int otherBlock in relationship.Blocks)
                 {
@@ -415,7 +404,7 @@ namespace Gum.InnerThoughts
         /// </summary>
         private Block CreateBlockWithJoin(int playUntil)
         {
-            Debug.Assert(_relationships.Count != 0, "This should only be called with a previous relationship.");
+            Debug.Assert(_lastEdges.Count != 0, "This should only be called with a previous relationship.");
 
             bool hasAnyBlocks = _lastBlocks.Count != 0;
 
@@ -428,15 +417,15 @@ namespace Gum.InnerThoughts
 
             Block joinedBlock = CreateBlock(playUntil, track: true);
 
-            if (!hasAnyBlocks && _relationships.Count == 1)
+            if (!hasAnyBlocks && _lastEdges.Count == 1)
             {
                 NextBlocks.Add(joinedBlock.Id);
             }
 
-            List<int> blocksThatWillBeJoined = _relationships.Peek().Blocks;
+            List<int> blocksThatWillBeJoined = _lastEdges.Peek().Blocks;
             List<int> leafBlocks = new();
 
-            Relationship lastRelationship = _relationships.Pop();
+            Edge lastRelationship = _lastEdges.Pop();
 
             // Now, for each of those blocks, we'll collect all of its leaves and add edges to it.
             foreach (int blockToJoin in blocksThatWillBeJoined)
@@ -444,7 +433,7 @@ namespace Gum.InnerThoughts
                 FindAllLeaves(blockToJoin, ref leafBlocks);
             }
 
-            Relationship relationship;
+            Edge edge;
             if (leafBlocks.Count == 0)
             {
                 Debug.Assert(lastRelationship.Owners.Count == 1, "If this is not the case, consider refactoring.");
@@ -453,61 +442,137 @@ namespace Gum.InnerThoughts
 
                 int owner = lastRelationship.Owners[0];
                 Block empty = CreateBlock(playUntil: Blocks[owner].PlayUntil, track: true);
+                ReplaceEdgesToNodeWith(owner, empty.Id);
 
                 _lastBlocks.Push(joinedBlock.Id);
 
-                relationship = CreateRelationship(RelationshipKind.Next, stack: true);
+                edge = CreateEdge(RelationshipKind.Next, stack: true);
 
-                relationship.Blocks.Add(owner);
-                relationship.Blocks.Add(joinedBlock.Id);
+                AddNode(edge, owner);
+                AddNode(edge, joinedBlock.Id);
 
-                LinkRelationship(empty.Id, relationship);
-
-                int i = NextBlocks.IndexOf(owner);
-                if (i != -1)
-                {
-                    NextBlocks[i] = empty.Id;
-                }
-                else
-                {
-                    Debug.Fail("If this is not the case, consider refactoring.");
-                }
+                AssignOwnerToEdge(empty.Id, edge);
             }
             else
             {
                 // Start by creating a link between previous blocks and this new one.
-                relationship = CreateRelationship(RelationshipKind.Next, stack: false);
-                relationship.Blocks.Add(joinedBlock.Id);
+                edge = CreateEdge(RelationshipKind.Next, stack: false);
+                AddNode(edge, joinedBlock.Id);
 
                 foreach (int i in leafBlocks)
                 {
-                    LinkRelationship(i, relationship);
+                    AssignOwnerToEdge(i, edge);
                 }
             }
 
             // Finally, create a new relationship for the block itself.
-            relationship = CreateRelationship(RelationshipKind.Next);
-            LinkRelationship(joinedBlock.Id, relationship);
+            edge = CreateEdge(RelationshipKind.Next);
+            AssignOwnerToEdge(joinedBlock.Id, edge);
 
             return joinedBlock;
         }
 
-        private Relationship CreateRelationship(RelationshipKind kind, bool stack = true)
+        /// <summary>
+        /// Creates a new block and assign an id to it.
+        /// </summary>
+        private Block CreateBlock(int playUntil, bool track)
         {
-            Relationship relationship = new(kind);
+            int id = Blocks.Count;
+            Block block = new(id, playUntil);
+
+            Blocks.Add(block);
+
+            if (track)
+            {
+                _lastBlocks.Push(id);
+            }
+
+            ParentOf[id] = new();
+
+            return block;
+        }
+
+        private Edge CreateEdge(RelationshipKind kind, bool stack = true)
+        {
+            Edge relationship = new(kind);
 
             if (stack)
             {
-                _relationships.Push(relationship);
+                _lastEdges.Push(relationship);
             }
 
             return relationship;
         }
 
-        private void LinkRelationship(int id, Relationship relationship)
+        private void AssignOwnerToEdge(int id, Edge edge)
         {
-            BlocksRelationship.Add(id, relationship);
-            relationship.Owners.Add(id);
+            Edges.Add(id, edge);
+            edge.Owners.Add(id);
+
+            // Track parents.
+            foreach (int block in edge.Blocks)
+            {
+                ParentOf[block].Add(id);
+            }
+        }
+
+        private void AddNode(Edge edge, int id)
+        {
+            edge.Blocks.Add(id);
+
+            // Track parents.
+            foreach (int owner in edge.Owners)
+            {
+                ParentOf[id].Add(owner);
+            }
+        }
+
+        private void RemoveNode(Edge edge, int id)
+        {
+            edge.Blocks.Remove(id);
+
+            foreach (int owner in edge.Owners)
+            {
+                ParentOf[id].Remove(owner);
+            }
+        }
+
+        /// <summary>
+        /// Given id: C and other: D:
+        /// Before:
+        ///    A      D
+        ///   / \
+        ///  B   C 
+        ///  
+        ///    D
+        /// After:
+        ///    A      C
+        ///   / \
+        ///  B   D 
+        /// This assumes that <paramref name="other"/> is an orphan.
+        /// <paramref name="id"/> will be orphan after this.
+        /// </summary>
+        private void ReplaceEdgesToNodeWith(int id, int other)
+        {
+            if (ParentOf[id].Count == 0)
+            {
+                // This is actually the root: easy, just replace with other.
+                int position = NextBlocks.IndexOf(id);
+                NextBlocks[position] = other;
+
+                return;
+            }
+
+            foreach (int parent in ParentOf[id])
+            {
+                // Manually tell each parent that the child has stopped existing.
+                int position = Edges[parent].Blocks.IndexOf(id);
+                Edges[parent].Blocks[position] = other;
+
+                ParentOf[other].Add(parent);
+            }
+
+            ParentOf[id].Clear();
         }
 
         public void PopLastBlock()
@@ -522,7 +587,7 @@ namespace Gum.InnerThoughts
 
         public void PopLastRelationship()
         {
-            if (!_relationships.TryPeek(out Relationship? relationship))
+            if (!_lastEdges.TryPeek(out Edge? relationship))
             {
                 // No op.
                 return;
@@ -530,24 +595,27 @@ namespace Gum.InnerThoughts
 
             if (relationship.Blocks.Count == 0)
             {
-                _ = _relationships.Pop();
+                _ = _lastEdges.Pop();
                 _ = _lastBlocks.Pop();
             }
             else
             {
                 foreach (int i in relationship.Blocks)
                 {
-                    _ = _lastBlocks.TryPop(out _);
+                    if (_lastBlocks.TryPeek(out int top) && i == top)
+                    {
+                        _ = _lastBlocks.Pop();
+                    }
                 }
 
                 if (relationship.Kind == RelationshipKind.Random)
                 {
-                    _ = _relationships.Pop();
+                    _ = _lastEdges.Pop();
                     _ = _lastBlocks.Pop();
                 }
-                else if (_relationships.Count >= 2 && _relationships.ElementAt(1).Kind == RelationshipKind.Choice)
+                else if (_lastEdges.Count >= 2 && _lastEdges.ElementAt(1).Kind == RelationshipKind.Choice)
                 {
-                    _ = _relationships.Pop();
+                    _ = _lastEdges.Pop();
                     _ = _lastBlocks.Pop();
                 }
             }

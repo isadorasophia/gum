@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Diagnostics;
+using System.Text.RegularExpressions;
 using Gum.InnerThoughts;
 using Gum.Utilities;
 
@@ -19,7 +20,8 @@ namespace Gum
         EndAction = ']',
         OptionBlock = '>',
         Flow = '@',
-        Negative = '!'
+        Negative = '!',
+        Debug = '%'
     }
 
     internal static partial class Tokens
@@ -101,7 +103,7 @@ namespace Gum
             return parser.Start();
         }
 
-        private Parser(string[] lines)
+        internal Parser(string[] lines)
         {
             _lines = lines;
         }
@@ -166,7 +168,7 @@ namespace Gum
                 }
             }
 
-            return new();
+            return _script;
         }
 
         /// <summary>
@@ -263,6 +265,7 @@ namespace Gum
                 {
                     int totalToPop = 0;
                     bool createJoinBlock = true;
+                    bool isChained = false;
 
                     if (Defines(line, TokenChar.BeginCondition))
                     {
@@ -271,6 +274,7 @@ namespace Gum
                         if (_indentBuffer <= 0 && !Defines(line, TokenChar.BeginCondition, Tokens.Else))
                         {
                             totalToPop = _lastIndentationIndex - _indentationIndex;
+                            isChained = true;
                         }
                         else if (_lastIndentationIndex - _indentationIndex > 1)
                         {
@@ -285,6 +289,7 @@ namespace Gum
                     {
                         totalToPop = 1;
                         createJoinBlock = false;
+                        isChained = true;
 
                         if (line.Length > 1 && line[1] == (char)TokenChar.OptionBlock)
                         {

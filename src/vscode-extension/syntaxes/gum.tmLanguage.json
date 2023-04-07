@@ -19,7 +19,7 @@
 		"keywords": {
 			"patterns": [
 				{
-					"begin": "(?=\\()",
+					"begin": "(?<=[\t|    ])(?=\\()",
 					"end": "(?<=\\))",
 					"name": "keyword.control.condition",
 					"patterns": [
@@ -86,17 +86,6 @@
 					"begin": "(?=\\=)",
 					"end": "(?=$)",
 					"name": "entity.name.class.gum"
-				}
-			]
-		},
-		"strings": {
-			"name": "string.quoted.double.gum",
-			"begin": "\"",
-			"end": "\"",
-			"patterns": [
-				{
-					"name": "constant.character.escape.gum",
-					"match": "\\\\."
 				}
 			]
 		},
