@@ -1,4 +1,7 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
+using System.Reflection;
+using System.Text;
 using System.Text.RegularExpressions;
 using Gum.InnerThoughts;
 using Gum.Utilities;
@@ -243,7 +246,7 @@ namespace Gum
         /// Read the next line, without any comments.
         /// </summary>
         /// <returns>Whether it was successful and no error occurred.</returns>
-        private bool ProcessLine(ReadOnlySpan<char> line, int index, int column, int depth = 0, bool hasCreatedJoinBlock = false)
+        private bool ProcessLine(ReadOnlySpan<char> line, int index, int column, int depth = 0, int joinLevel = 0, bool hasCreatedJoinBlock = false)
         {
             if (line.IsEmpty) return true;
 
@@ -263,23 +266,12 @@ namespace Gum
                 // ^ to here
                 if (_indentationIndex < _lastIndentationIndex)
                 {
-                    int totalToPop = 0;
+                    joinLevel = _lastIndentationIndex - _indentationIndex;
                     bool createJoinBlock = true;
-                    bool isChained = false;
 
                     if (Defines(line, TokenChar.BeginCondition))
                     {
                         createJoinBlock = false;
-
-                        if (_indentBuffer <= 0 && !Defines(line, TokenChar.BeginCondition, Tokens.Else))
-                        {
-                            totalToPop = _lastIndentationIndex - _indentationIndex;
-                            isChained = true;
-                        }
-                        else if (_lastIndentationIndex - _indentationIndex > 1)
-                        {
-                            totalToPop = 1;
-                        }
                     }
                     else if (Defines(line, new TokenChar[] { 
                         TokenChar.Situation,
@@ -287,26 +279,21 @@ namespace Gum
                         TokenChar.MultipleBlock, 
                         TokenChar.OnceBlock }))
                     {
-                        totalToPop = 1;
-                        createJoinBlock = false;
-                        isChained = true;
-
                         if (line.Length > 1 && line[1] == (char)TokenChar.OptionBlock)
                         {
                             // Actually a ->
-                            createJoinBlock = true;
                         }
-                    }
-
-                    while (totalToPop-- > 0)
-                    {
-                        _script.CurrentSituation.PopLastRelationship();
+                        else
+                        {
+                            _script.CurrentSituation.PopLastBlock();
+                            createJoinBlock = false;
+                        }
                     }
 
                     // Depending where we were, we may need to "join" different branches.
                     if (createJoinBlock)
                     {
-                        _currentBlock = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), join: true, isNested: false).Id;
+                        _currentBlock = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel, isNested: false).Id;
                         hasCreatedJoinBlock = true;
                     }
                 }
@@ -377,7 +364,7 @@ namespace Gum
                         {
                             if (hasCreatedJoinBlock)
                             {
-                                _ = _script.CurrentSituation.SwitchRelationshipTo(RelationshipKind.Random);
+                                _ = _script.CurrentSituation.SwitchRelationshipTo(EdgeKind.Random);
                             }
                             else
                             {
@@ -392,7 +379,7 @@ namespace Gum
                             }
                             else
                             {
-                                _playUntil = number;
+                                _currentBlock = _script.CurrentSituation.AddBlock(number, joinLevel, isNestedBlock, EdgeKind.Next).Id;
                             }
                         }
                         else
@@ -434,16 +421,17 @@ namespace Gum
                         line = line.Slice(0, endColumn);
                         if (!hasCreatedJoinBlock)
                         {
-                            RelationshipKind relationshipKind = RelationshipKind.Next;
+                            EdgeKind relationshipKind = EdgeKind.Next;
                             if (line.StartsWith(Tokens.Else))
                             {
-                                relationshipKind = RelationshipKind.IfElse;
+                                relationshipKind = EdgeKind.IfElse;
                             }
 
                             _currentBlock = _script.CurrentSituation.AddBlock(
-                                ConsumePlayUntil(), join: false, isNestedBlock, relationshipKind).Id;
+                                ConsumePlayUntil(), joinLevel, isNestedBlock, relationshipKind).Id;
                         }
 
+                        Block.Conditional = true;
                         return ParseConditions(line, index, column);
 
                     // [
@@ -476,16 +464,16 @@ namespace Gum
                         }
 
                         _playUntil = 1;
-                        return ParseOption(line, index, column, join: false, isNestedBlock);
+                        return ParseOption(line, index, column, joinLevel: 0, isNestedBlock);
 
                     // +
                     case TokenChar.MultipleBlock:
                         _playUntil = -1;
-                        return ParseOption(line, index, column, join: false, isNestedBlock);
+                        return ParseOption(line, index, column, joinLevel: 0, isNestedBlock);
 
                     // >
                     case TokenChar.OptionBlock:
-                        return ParseChoice(line, index, column, join: false, isNestedBlock);
+                        return ParseChoice(line, index, column, joinLevel: 0, isNestedBlock);
 
                     default:
                         return true;
@@ -498,33 +486,60 @@ namespace Gum
 
             if (!line.IsEmpty)
             {
-                return ProcessLine(line, index, column, depth + 1, hasCreatedJoinBlock);
+                return ProcessLine(line, index, column, depth + 1, joinLevel, hasCreatedJoinBlock);
             }
 
             return true;
         }
 
-        private bool ParseChoice(ReadOnlySpan<char> line, int lineIndex, int columnIndex, bool join, bool nested)
+        private bool ParseChoice(ReadOnlySpan<char> line, int lineIndex, int columnIndex, int joinLevel, bool nested)
         {
-            _currentBlock = _script.CurrentSituation.AddBlock(
-                    ConsumePlayUntil(), join, nested, RelationshipKind.Choice).Id;
-
             line = line.TrimStart().TrimEnd();
+
+            if (line.IsEmpty)
+            {
+                OutputHelpers.WriteError($"Invalid empty choice '{(char)TokenChar.OptionBlock}' on line {lineIndex}.");
+                OutputHelpers.ProposeFixAtColumn(
+                    lineIndex,
+                    columnIndex,
+                    arrowLength: 1,
+                    content: _currentLine,
+                    issue: "Expected any form of text.");
+
+                return false;
+            }
+
+            if (_script.CurrentSituation.PeekLastEdgeKind() != EdgeKind.Choice && line[0] != (char)TokenChar.OptionBlock)
+            {
+                ReadOnlySpan<char> newLine = _currentLine.AsSpan().Slice(0, columnIndex);
+
+                OutputHelpers.WriteError($"Expected a title prior to a choice block '{(char)TokenChar.OptionBlock}' on line {lineIndex}.");
+                OutputHelpers.ProposeFixOnLineAbove(
+                    lineIndex,
+                    currentLine: _currentLine,
+                    newLine: string.Concat(newLine, "> Do your choice"));
+
+                return false;
+            }
+
+            _currentBlock = _script.CurrentSituation.AddBlock(
+                ConsumePlayUntil(), joinLevel, nested, EdgeKind.Choice).Id;
+
             Block.AddLine(line);
 
             return true;
         }
 
-        private bool ParseOption(ReadOnlySpan<char> line, int lineIndex, int columnIndex, bool join, bool nested)
+        private bool ParseOption(ReadOnlySpan<char> line, int lineIndex, int columnIndex, int joinLevel, bool nested)
         {
-            RelationshipKind relationshipKind = RelationshipKind.HighestScore;
+            EdgeKind relationshipKind = EdgeKind.HighestScore;
             if (ConsumeIsRandom())
             {
-                relationshipKind = RelationshipKind.Random;
+                relationshipKind = EdgeKind.Random;
             }
 
             _currentBlock = _script.CurrentSituation.AddBlock(
-                    ConsumePlayUntil(), join, nested, relationshipKind).Id;
+                    ConsumePlayUntil(), joinLevel, nested, relationshipKind).Id;
 
             line = line.TrimStart().TrimEnd();
             Block.AddLine(line);
@@ -534,10 +549,10 @@ namespace Gum
 
         private bool ParseLine(ReadOnlySpan<char> line, int _, int __)
         {
-            if (_script.CurrentSituation.Blocks.Count == 0)
+            if (_script.CurrentSituation.Blocks.Count == 1)
             {                      
                 _currentBlock = _script.CurrentSituation.AddBlock(
-                    ConsumePlayUntil(), join: false, isNested: false, RelationshipKind.Next).Id;
+                    ConsumePlayUntil(), joinLevel: 0, isNested: false, EdgeKind.Next).Id;
             }
 
             // This is probably just a line! So let's just read as it is.

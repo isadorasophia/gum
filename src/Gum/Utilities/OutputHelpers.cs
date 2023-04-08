@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.Metrics;
 using Gum.Attributes;
 
 namespace Gum.Utilities
@@ -35,6 +36,15 @@ namespace Gum.Utilities
             Console.WriteLine($"\tLine {line} | {before}");
             Console.WriteLine($"\t   ⬇️");
             Console.WriteLine($"\tLine {line} | {after}");
+        }
+
+        public static void ProposeFixOnLineAbove(int line, ReadOnlySpan<char> currentLine, ReadOnlySpan<char> newLine)
+        {
+            Console.WriteLine("Suggestion:");
+            Console.WriteLine($"\tLine {line} | {currentLine}");
+            Console.WriteLine($"\t   ⬇️");
+            Console.WriteLine($"\tLine {line} | {newLine}");
+            Console.WriteLine($"\tLine {line+1} | {currentLine}");
         }
 
         public static void ProposeFixAtColumn(int line, int column, int arrowLength, ReadOnlySpan<char> content, ReadOnlySpan<char> issue)

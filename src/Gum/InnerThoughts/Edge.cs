@@ -11,12 +11,12 @@ namespace Gum.InnerThoughts
     [DebuggerDisplay("{DebuggerDisplay(),nq}")]
     internal class Edge
     {
-        public RelationshipKind Kind = RelationshipKind.Next;
+        public EdgeKind Kind = EdgeKind.Next;
 
         /// <summary>
-        /// List of owners that currently have this relationship.
+        /// Node that owns this edge. This is a 1 <-> 1 relationship.
         /// </summary>
-        public readonly List<int> Owners = new();
+        public int Owner = -1;
 
         /// <summary>
         /// Blocks, in order, which will be subjected to a scan according to <see cref="Kind"/>.
@@ -25,7 +25,7 @@ namespace Gum.InnerThoughts
 
         public Edge() { }
 
-        public Edge(RelationshipKind kind) => Kind = kind;
+        public Edge(EdgeKind kind) => Kind = kind;
 
         public string DebuggerDisplay()
         {

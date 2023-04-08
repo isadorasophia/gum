@@ -1,7 +1,5 @@
-﻿using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks.Dataflow;
-using Gum.Utilities;
+﻿using Gum.Utilities;
+using System.Diagnostics;
 
 namespace Gum.InnerThoughts
 {
@@ -10,14 +8,11 @@ namespace Gum.InnerThoughts
     {
         public readonly int Id = 0;
 
+        public int Root = 0;
+
         public readonly string Name = string.Empty;
 
         public readonly List<Block> Blocks = new();
-
-        /// <summary>
-        /// The dialogs which will be executed, in order.
-        /// </summary>
-        public readonly List<int> NextBlocks = new();
 
         /// <summary>
         /// This points
@@ -32,11 +27,6 @@ namespace Gum.InnerThoughts
         /// </summary>
         public readonly Dictionary<int, HashSet<int>> ParentOf = new();
 
-        /// <summary>
-        /// Track the edges when adding those values.
-        /// </summary>
-        private readonly Stack<Edge> _lastEdges  = new();
-
         private readonly Stack<int> _lastBlocks = new();
 
         public Situation() { }
@@ -47,19 +37,17 @@ namespace Gum.InnerThoughts
             Name = name;
 
             // Add a root node.
-            //Block block = CreateBlock(playUntil: -1, track: true);
-            //Edge edge = CreateEdge(RelationshipKind.Next);
+            Block block = CreateBlock(playUntil: -1, track: true);
+            Edge edge = CreateEdge(EdgeKind.Next);
 
-            //AssignOwnerToEdge(block.Id, edge);
+            AssignOwnerToEdge(block.Id, edge);
+
+            Root = block.Id;
         }
 
-        public bool SwitchRelationshipTo(RelationshipKind kind)
+        public bool SwitchRelationshipTo(EdgeKind kind)
         {
-            if (!_lastEdges.TryPeek(out Edge? lastEdge))
-            {
-                throw new InvalidOperationException("☠️ Error on the implementation! " +
-                    "Why are we assuming a relationship exists here?");
-            }
+            Edge lastEdge = LastEdge;
             
             if (lastEdge.Kind == kind)
             {
@@ -71,18 +59,15 @@ namespace Gum.InnerThoughts
             Debug.Assert(length != 0, "We expect that the last block added will be the block subjected to the " +
                 "relationship switch.");
 
-            Edge? edge;
-            Block empty;
-
             switch (kind)
             {
-                case RelationshipKind.Next:
-                case RelationshipKind.Random:
+                case EdgeKind.Next:
+                case EdgeKind.Random:
                     lastEdge.Kind = kind;
                     return true;
 
-                case RelationshipKind.Choice:
-                case RelationshipKind.HighestScore:
+                case EdgeKind.Choice:
+                case EdgeKind.HighestScore:
                     if (length == 1)
                     {
                         lastEdge.Kind = kind;
@@ -90,290 +75,221 @@ namespace Gum.InnerThoughts
                     else
                     {
                         Debug.Fail("I don't understand this scenario fully, please debug this.");
-
                         // Remove the last block and create a new one?
                     }
 
                     return true;
 
-                case RelationshipKind.IfElse:
-                    // This assumes that the 'else' block has already been inserted into the relationship
-                    // and corresponds to the last added block.
-
-                    // First, rearrange our current expectations.
-                    if (length == 1)
-                    {
-                        // Okay, so what happened is that we have an if node point to another node, which is
-                        // actually an else.
-                        // To fix this, we'll create a ~ghost~ node and use that to create the if/else relationship.
-                        // However! We will persist the properties of the first block.
-                        if (lastEdge.Owners.Count > 2)
-                        {
-                            throw new InvalidOperationException("☠️ Error on the implementation! " +
-                                "Somehow, you managed to get into a state where a 'else' relationship is grabbing a link from two different" +
-                                "nodes. I wasn't sure if this was even possible. Could you report this?");
-                        }
-
-                        Block ifBlock = Blocks[lastEdge.Owners[0]];
-                        int elseBlock = lastEdge.Blocks[0];
-
-                        _ = _lastBlocks.Pop();
-                        _ = _lastBlocks.Pop();
-
-                        _lastBlocks.Push(elseBlock);
-
-                        empty = CreateBlock(playUntil: ifBlock.PlayUntil, track: false);
-
-                        _ = Edges.Remove(ifBlock.Id);
-                        _ = _lastEdges.Pop();
-
-                        ReplaceEdgesToNodeWith(ifBlock.Id, empty.Id);
-
-                        edge = CreateEdge(kind);
-
-                        AddNode(edge, ifBlock.Id);
-                        AddNode(edge, elseBlock);
-
-                        AssignOwnerToEdge(empty.Id, edge);
-
-                        // We found an else block without any prior block, other than ourselves!
-                    }
-                    else if (length == 2)
-                    {
-                        // Only if + else here, all good.
-                        lastEdge.Kind = kind;
-
-                        int elseBlock = lastEdge.Blocks[length - 1];
-
-                        _ = _lastBlocks.Pop();
-                        _ = _lastBlocks.Pop();
-
-                        _lastBlocks.Push(elseBlock);
-                    }
-                    else
-                    {
-                        // We need to get surgical about this.
-                        // "Remove" the last block and move it to a new relationship.
-                        int ifBlock = lastEdge.Blocks[length - 2];
-                        int elseBlock = lastEdge.Blocks[length - 1];
-
-                        RemoveNode(lastEdge, ifBlock);
-                        RemoveNode(lastEdge, elseBlock);
-
-                        _ = _lastBlocks.Pop();
-                        _ = _lastBlocks.Pop();
-
-                        _lastBlocks.Push(elseBlock);
-
-                        // "Grab" the first block, so it now points to the new relationship created.
-                        int previousBlock = lastEdge.Blocks[length - 3];
-
-                        edge = CreateEdge(kind);
-
-                        AddNode(edge, ifBlock);
-                        AddNode(edge, elseBlock);
-
-                        AssignOwnerToEdge(previousBlock, edge);
-                    }
-
-                    return true;
+                case EdgeKind.IfElse:
+                    return false;
             }
 
             return true;
         }
 
+        internal EdgeKind PeekLastEdgeKind() => LastEdge.Kind;
+
         /// <summary>
         /// Creates a new block subjected to a <paramref name="kind"/> relationship.
         /// </summary>
-        public Block AddBlock(int playUntil, bool join, bool isNested, RelationshipKind kind = RelationshipKind.Next)
+        public Block? AddBlock(int playUntil, int joinLevel, bool isNested, EdgeKind kind = EdgeKind.Next)
         {
-            // If this should actually join other nodes, make sure we do that.
-            if (join && _lastEdges.Count > 0)
+            // We need to know the "parent" node when nesting blocks (make the parent -> point to the new block).
+            (int parentId, int[] blocksToBeJoined) = FetchParentOfJoinedBlock(joinLevel);
+
+            Edge lastEdge = Edges[parentId];
+            if (!kind.IsSequential() && Blocks[lastEdge.Owner].NonLinearNode)
             {
-                return CreateBlockWithJoin(playUntil);
+                // This is the only "HACKY" thing I will allow here.
+                // Since I want to avoid a syntax such as:
+                //  (condition)
+                //      @score
+                //          - something
+                //          - something
+                // and instead have something like
+                //  (condition)
+                //      - something
+                //      - something
+                // I will do the following:
+                _lastBlocks.Pop();
+
+                parentId = _lastBlocks.Peek();
+                blocksToBeJoined = new int[] { parentId };
             }
 
-            // We need to know the "parent" node when nesting blocks (make the parent -> point to the new block).
-            bool hasBlocks = _lastBlocks.TryPeek(out int lastBlockId);
+            if (kind == EdgeKind.IfElse)
+            {
+                blocksToBeJoined = new int[] { parentId };
+            }
 
-            Edge? edge;
             Block block = CreateBlock(playUntil, track: true);
+            block.NonLinearNode = !kind.IsSequential();
+
+            Edge? edge = CreateEdge(EdgeKind.Next);
+            AssignOwnerToEdge(block.Id, edge);
 
             // If this was called right after a situation has been declared, it'll think that it is a nested block
             // (when it's not really).
-            
-            if (isNested && hasBlocks)
+
+            if (isNested)
             {
-                // If there is a parent block that this can be nested to.
-                if (hasBlocks)
-                {
-                    if (!Edges.TryGetValue(lastBlockId, out edge))
-                    {
-                        // The parent does not have an edge to other nodes. In that case, create one.
-                        edge = CreateEdge(kind);
-                        AssignOwnerToEdge(lastBlockId, edge);
-                    }
+                edge = Edges[parentId];
+                edge.Kind = kind;
 
-                    AddNode(edge, block.Id);
-                }
-                else
-                {
-                    edge = CreateEdge(RelationshipKind.Next);
-                    AddNode(edge, block.Id);
-
-                    AssignOwnerToEdge(lastBlockId, edge);
-
-                    if (edge.Kind != RelationshipKind.Next)
-                    {
-                        edge = CreateEdge(kind);
-                        AssignOwnerToEdge(block.Id, edge);
-                    }
-                }
+                AddNode(edge, block.Id);
+                return block;
             }
-            else if (!hasBlocks)
+
+            foreach (int parent in blocksToBeJoined)
             {
-                // This is actually a "root" node. Add it directly as the next available node and create a relationship.
-                NextBlocks.Add(block.Id);
-
-                edge = CreateEdge(kind);
-                AssignOwnerToEdge(block.Id, edge);
-
-                // This is actually a non-sequential node, so it can't be simply tracked in "NextBlocks".
-                // TODO: Remove NextBlocks?? I don't know why I added that.
-                if (!kind.IsSequential())
-                {
-                    block = CreateBlock(playUntil, track: false);
-                    AddNode(edge, block.Id);
-                }
-            }
-            else
-            {
-                Edge targetEdge = _lastEdges.Peek();
-
-                if (kind == RelationshipKind.Choice && _lastBlocks.Count > 2)
-                {
-                    int parent = _lastBlocks.ElementAt(2);
-                    if (Edges.TryGetValue(parent, out edge) && 
-                        edge.Kind == RelationshipKind.Choice)
-                    {
-                        targetEdge = edge;
-                    }
-                }
-
-                if (targetEdge.Kind != kind && targetEdge.Blocks.Count == 0 &&
-                    NextBlocks.Contains(lastBlockId) && kind == RelationshipKind.Next)
-                {
-                    _lastEdges.Clear();
-                    _lastBlocks.Clear();
-                    _lastBlocks.Push(block.Id);
-
-                    // This is actually a "root" node. Add it directly as the next available node and create a relationship.
-                    NextBlocks.Add(block.Id);
-
-                    edge = CreateEdge(kind);
-                    AssignOwnerToEdge(block.Id, edge);
-
-                    // This is actually a non-sequential node, so it can't be simply tracked in "NextBlocks".
-                    // TODO: Remove NextBlocks?? I don't know why I added that.
-                    if (!kind.IsSequential())
-                    {
-                        block = CreateBlock(playUntil, track: false);
-                        AddNode(edge, block.Id);
-                    }
-
-                    return block;
-                }
-
-                if (kind == RelationshipKind.IfElse && targetEdge.Kind != kind)
-                {
-                    if (targetEdge.Kind != RelationshipKind.Next)
-                    {
-                        _ = _lastBlocks.TryPop(out _);
-                        _ = _lastBlocks.TryPop(out _);
-
-                        _lastBlocks.Push(block.Id);
-
-                        _ = _lastEdges.TryPop(out _);
-
-                        Block empty = CreateBlock(playUntil: -1, track: false);
-                        ReplaceEdgesToNodeWith(lastBlockId, empty.Id);
-
-                        targetEdge = CreateEdge(kind);
-
-                        AddNode(targetEdge, lastBlockId);
-                        AddNode(targetEdge, block.Id);
-                        AssignOwnerToEdge(empty.Id, targetEdge);
-
-                        return block;
-                    }
-
-                    // This has been a bit of a headache, but if this is an "if else" and the current connection
-                    // is not the same, we'll convert this later.
-                    kind = RelationshipKind.Next;
-                }
-                // If this is "intruding" an existing nested if-else.
-                //  (hasA)
-                //      (hasB)
-                //      (...)
-                //  (...)
-                else if (kind == RelationshipKind.IfElse && targetEdge.Kind == kind && lastBlockId == targetEdge.Owners[0])
-                {
-                    // This is copied and pasted from above. We will refactor this.
-                    _ = _lastBlocks.TryPop(out _);
-                    _ = _lastBlocks.TryPop(out _);
-
-                    _lastBlocks.Push(block.Id);
-
-                    _ = _lastEdges.TryPop(out _);
-
-                    Block empty = CreateBlock(playUntil: -1, track: false);
-                    ReplaceEdgesToNodeWith(lastBlockId, empty.Id);
-
-                    targetEdge = CreateEdge(kind);
-
-                    AddNode(targetEdge, lastBlockId);
-                    AddNode(targetEdge, block.Id);
-                    AssignOwnerToEdge(empty.Id, targetEdge);
-
-                    return block;
-                }
-
-                if (kind == RelationshipKind.HighestScore && targetEdge.Kind == RelationshipKind.Random)
-                {
-                    // A "HighestScore" kind when is matched with a "random" relationship, it is considered one of them
-                    // automatically.
-                    kind = RelationshipKind.Random;
-                }
-
-                if (targetEdge.Kind != kind && targetEdge.Blocks.Count == 0)
-                {
-                    targetEdge.Kind = kind;
-                }
-                else if (targetEdge.Kind != kind && kind == RelationshipKind.HighestScore)
-                {
-                    targetEdge = CreateEdge(kind);
-
-                    AssignOwnerToEdge(lastBlockId, targetEdge);
-                }
-                else if (targetEdge.Kind != kind)
-                {
-                    _ = _lastEdges.Pop();
-
-                    Block lastBlock = Blocks[lastBlockId];
-
-                    Block empty = CreateBlock(playUntil: lastBlock.PlayUntil, track: false);
-                    ReplaceEdgesToNodeWith(lastBlockId, empty.Id);
-
-                    targetEdge = CreateEdge(kind);
-
-                    AddNode(targetEdge, lastBlock.Id);
-                    AssignOwnerToEdge(empty.Id, targetEdge);
-                }
-
-                AddNode(targetEdge, block.Id);
+                JoinBlock(block, edge, parent, kind);
             }
 
             return block;
+        }
+
+        private bool JoinBlock(Block block, Edge nextEdge, int parentId, EdgeKind kind)
+        {
+            Edge lastEdge = Edges[parentId];
+            switch (kind)
+            {
+                case EdgeKind.Choice:
+                    if (lastEdge.Kind != EdgeKind.Choice)
+                    {
+                        // before:
+                        //     .
+                        //     |    D
+                        //     A 
+                        //
+                        // after:
+                        //     .
+                        //     |
+                        //     A
+                        //     |
+                        //     D
+                        //  {choice}
+
+                        lastEdge = Edges[parentId];
+                        AddNode(lastEdge, block.Id);
+
+                        nextEdge.Kind = kind;
+
+                        return true;
+                    }
+
+                    AddNode(lastEdge, block.Id);
+                    return true;
+
+                case EdgeKind.HighestScore:
+                case EdgeKind.Random:
+                    nextEdge.Kind = EdgeKind.HighestScore;
+                    break;
+
+                case EdgeKind.IfElse:
+                    if (lastEdge.Kind == EdgeKind.IfElse ||
+                        (lastEdge.Kind.IsSequential() && lastEdge.Blocks.Count == 1))
+                    {
+                        lastEdge.Kind = EdgeKind.IfElse;
+
+                        AddNode(lastEdge, block.Id);
+                        return true;
+                    }
+
+                    if (lastEdge.Blocks.Count > 1)
+                    {
+                        CreateDummyNodeAt(lastEdge.Blocks.Last(), block.Id, kind);
+                        return true;
+                    }
+
+                    Debug.Fail("Empty edge?");
+                    return false;
+            }
+
+            if (kind == EdgeKind.IfElse && lastEdge.Kind != kind)
+            {
+                if (lastEdge.Kind != EdgeKind.Next)
+                {
+                    CreateDummyNodeAt(parentId, block.Id, kind);
+                    return true;
+                }
+
+                // This has been a bit of a headache, but if this is an "if else" and the current connection
+                // is not the same, we'll convert this later.
+                kind = EdgeKind.Next;
+            }
+
+            // If this is "intruding" an existing nested if-else.
+            //  (hasA)
+            //      (hasB)
+            //      (...)
+            //  (...)
+            else if (kind == EdgeKind.IfElse && lastEdge.Kind == kind && parentId == lastEdge.Owner)
+            {
+                CreateDummyNodeAt(parentId, block.Id, kind);
+                return true;
+            }
+
+            if (kind == EdgeKind.HighestScore && lastEdge.Kind == EdgeKind.Random)
+            {
+                // A "HighestScore" kind when is matched with a "random" relationship, it is considered one of them
+                // automatically.
+                kind = EdgeKind.Random;
+            }
+
+            if (lastEdge.Kind != kind && lastEdge.Blocks.Count == 0)
+            {
+                lastEdge.Kind = kind;
+            }
+            else if (lastEdge.Kind != kind && kind == EdgeKind.HighestScore)
+            {
+                // No-op?
+            }
+            else if (lastEdge.Kind != kind)
+            {
+                CreateDummyNodeAt(parentId, block.Id, kind);
+                return true;
+            }
+
+            AddNode(lastEdge, block.Id);
+            return true;
+        }
+
+        /// <summary>
+        /// Given C and D:
+        /// Before:
+        ///    A
+        ///   / \
+        ///  B   C <- parent  D <- block
+        ///     /
+        ///  ...
+        ///  
+        /// After:
+        ///    A
+        ///   / \
+        ///  B   E <- dummy
+        ///     / \
+        ///    C   D
+        ///   /    
+        ///...
+        ///
+        /// </summary>
+        private void CreateDummyNodeAt(int parentId, int blockId, EdgeKind kind)
+        {
+            Block lastBlock = Blocks[parentId];
+
+            // This is copied and pasted from above. We will refactor this.
+            _ = _lastBlocks.TryPop(out _);
+            _ = _lastBlocks.TryPop(out _);
+
+            Block empty = CreateBlock(playUntil: lastBlock.PlayUntil, track: true);
+            ReplaceEdgesToNodeWith(parentId, empty.Id);
+
+            _lastBlocks.Push(blockId);
+
+            Edge lastEdge = CreateEdge(kind);
+            AddNode(lastEdge, parentId);
+            AddNode(lastEdge, blockId);
+            AssignOwnerToEdge(empty.Id, lastEdge);
         }
 
         /// <summary>
@@ -382,9 +298,10 @@ namespace Gum.InnerThoughts
         /// </summary>
         private void FindAllLeaves(int block, ref List<int> result)
         {
-            if (Edges.TryGetValue(block, out Edge? relationship))
+            Edge edge = Edges[block];
+            if (edge.Blocks.Count != 0)
             {
-                foreach (int otherBlock in relationship.Blocks)
+                foreach (int otherBlock in edge.Blocks)
                 {
                     FindAllLeaves(otherBlock, ref result);
                 }
@@ -399,77 +316,98 @@ namespace Gum.InnerThoughts
             }
         }
 
-        /// <summary>
-        /// Creates a block by joining whatever blocks were in the last relationship and point to it.
-        /// </summary>
-        private Block CreateBlockWithJoin(int playUntil)
+        private (int Parent, int[] blocksToBeJoined) FetchParentOfJoinedBlock(int joinLevel)
         {
-            Debug.Assert(_lastEdges.Count != 0, "This should only be called with a previous relationship.");
+            int topParent;
 
-            bool hasAnyBlocks = _lastBlocks.Count != 0;
-
-            // Get rid of the last blocks prior to the join, if any.
-            if (hasAnyBlocks)
+            if (joinLevel == 0)
             {
-                _ = _lastBlocks.TryPop(out _);
-                _ = _lastBlocks.TryPop(out _);
+                topParent = _lastBlocks.Peek();
+                return (topParent, new int[] { topParent });
             }
 
-            Block joinedBlock = CreateBlock(playUntil, track: true);
-
-            if (!hasAnyBlocks && _lastEdges.Count == 1)
+            while (_lastBlocks.Count > 1 && joinLevel-- > 0)
             {
-                NextBlocks.Add(joinedBlock.Id);
+                int block = _lastBlocks.Pop();
+
+                // When I said I would allow one (1) hacky code, I lied.
+                // This is another one.
+                // SO, the indentation gets really weird for conditionals, as we pretty
+                // much disregard one indent? I found that the best approach to handle this is 
+                // manually cleaning up the stack when there is NOT a conditional block on join.
+                if (Blocks[block].NonLinearNode)
+                {
+                    // no-op.
+                }
+                else if (!Blocks[block].Conditional)
+                {
+                    joinLevel++;
+                }
             }
 
-            List<int> blocksThatWillBeJoined = _lastEdges.Peek().Blocks;
+            topParent = _lastBlocks.Peek();
+
+            int[] blocksToLookForLeaves = Edges[topParent].Blocks.ToArray();
             List<int> leafBlocks = new();
 
-            Edge lastRelationship = _lastEdges.Pop();
-
             // Now, for each of those blocks, we'll collect all of its leaves and add edges to it.
-            foreach (int blockToJoin in blocksThatWillBeJoined)
+            foreach (int blockToJoin in blocksToLookForLeaves)
             {
                 FindAllLeaves(blockToJoin, ref leafBlocks);
             }
 
+            bool addToParent = true;
+
             Edge edge;
-            if (leafBlocks.Count == 0)
+            if (leafBlocks.Count != 0)
             {
-                Debug.Assert(lastRelationship.Owners.Count == 1, "If this is not the case, consider refactoring.");
-
-                _ = _lastBlocks.Pop();
-
-                int owner = lastRelationship.Owners[0];
-                Block empty = CreateBlock(playUntil: Blocks[owner].PlayUntil, track: true);
-                ReplaceEdgesToNodeWith(owner, empty.Id);
-
-                _lastBlocks.Push(joinedBlock.Id);
-
-                edge = CreateEdge(RelationshipKind.Next, stack: true);
-
-                AddNode(edge, owner);
-                AddNode(edge, joinedBlock.Id);
-
-                AssignOwnerToEdge(empty.Id, edge);
-            }
-            else
-            {
-                // Start by creating a link between previous blocks and this new one.
-                edge = CreateEdge(RelationshipKind.Next, stack: false);
-                AddNode(edge, joinedBlock.Id);
-
                 foreach (int i in leafBlocks)
                 {
-                    AssignOwnerToEdge(i, edge);
+                    int conditionalParent = GetConditionalBlock(i);
+                    if (conditionalParent == -1 || conditionalParent == topParent)
+                    {
+                        addToParent = false;
+                    }
                 }
             }
 
-            // Finally, create a new relationship for the block itself.
-            edge = CreateEdge(RelationshipKind.Next);
-            AssignOwnerToEdge(joinedBlock.Id, edge);
+            if (addToParent)
+            {
+                leafBlocks.Add(topParent);
+            }
 
-            return joinedBlock;
+            return (topParent, leafBlocks.Distinct().ToArray());
+        }
+
+        private int GetConditionalBlock(int block)
+        {
+            if (Blocks[block].PlayUntil != -1)
+            {
+                return block;
+            }
+
+            if (Blocks[block].Requirements.Count != 0)
+            {
+                return block;
+            }
+
+            if (ParentOf[block].Contains(0))
+            {
+                // This is tied to the root and the block can play forever.
+                return -1;
+            }
+
+            int result = -1;
+            foreach (int parent in ParentOf[block])
+            {
+                result = GetConditionalBlock(parent);
+                if (result == -1)
+                {
+                    break;
+                }
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -492,14 +430,9 @@ namespace Gum.InnerThoughts
             return block;
         }
 
-        private Edge CreateEdge(RelationshipKind kind, bool stack = true)
+        private Edge CreateEdge(EdgeKind kind)
         {
             Edge relationship = new(kind);
-
-            if (stack)
-            {
-                _lastEdges.Push(relationship);
-            }
 
             return relationship;
         }
@@ -507,7 +440,7 @@ namespace Gum.InnerThoughts
         private void AssignOwnerToEdge(int id, Edge edge)
         {
             Edges.Add(id, edge);
-            edge.Owners.Add(id);
+            edge.Owner = id;
 
             // Track parents.
             foreach (int block in edge.Blocks)
@@ -520,25 +453,14 @@ namespace Gum.InnerThoughts
         {
             edge.Blocks.Add(id);
 
-            // Track parents.
-            foreach (int owner in edge.Owners)
+            if (edge.Owner != -1)
             {
-                ParentOf[id].Add(owner);
-            }
-        }
-
-        private void RemoveNode(Edge edge, int id)
-        {
-            edge.Blocks.Remove(id);
-
-            foreach (int owner in edge.Owners)
-            {
-                ParentOf[id].Remove(owner);
+                ParentOf[id].Add(edge.Owner);
             }
         }
 
         /// <summary>
-        /// Given id: C and other: D:
+        /// Given C and D:
         /// Before:
         ///    A      D
         ///   / \
@@ -554,13 +476,9 @@ namespace Gum.InnerThoughts
         /// </summary>
         private void ReplaceEdgesToNodeWith(int id, int other)
         {
-            if (ParentOf[id].Count == 0)
+            if (Root == id)
             {
-                // This is actually the root: easy, just replace with other.
-                int position = NextBlocks.IndexOf(id);
-                NextBlocks[position] = other;
-
-                return;
+                Root = other;
             }
 
             foreach (int parent in ParentOf[id])
@@ -575,51 +493,38 @@ namespace Gum.InnerThoughts
             ParentOf[id].Clear();
         }
 
+        private bool IsParentOf(int parentNode, int childNode)
+        {
+            if (ParentOf[childNode].Count == 0)
+            {
+                return false;
+            }
+
+            if (ParentOf[childNode].Contains(parentNode))
+            {
+                return true;
+            }
+
+            foreach (int otherParent in ParentOf[childNode])
+            {
+                if (IsParentOf(parentNode, otherParent))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public void PopLastBlock()
         {
-            if (_lastBlocks.Count == 0)
+            if (_lastBlocks.Count > 1)
             {
-                return;
-            }
-
-            _ = _lastBlocks.Pop();
-        }
-
-        public void PopLastRelationship()
-        {
-            if (!_lastEdges.TryPeek(out Edge? relationship))
-            {
-                // No op.
-                return;
-            }
-
-            if (relationship.Blocks.Count == 0)
-            {
-                _ = _lastEdges.Pop();
                 _ = _lastBlocks.Pop();
             }
-            else
-            {
-                foreach (int i in relationship.Blocks)
-                {
-                    if (_lastBlocks.TryPeek(out int top) && i == top)
-                    {
-                        _ = _lastBlocks.Pop();
-                    }
-                }
-
-                if (relationship.Kind == RelationshipKind.Random)
-                {
-                    _ = _lastEdges.Pop();
-                    _ = _lastBlocks.Pop();
-                }
-                else if (_lastEdges.Count >= 2 && _lastEdges.ElementAt(1).Kind == RelationshipKind.Choice)
-                {
-                    _ = _lastEdges.Pop();
-                    _ = _lastBlocks.Pop();
-                }
-            }
         }
+
+        private Edge LastEdge => Edges[_lastBlocks.Peek()];
 
         private readonly HashSet<int> _blocksWithGoto = new();
 

@@ -8,17 +8,17 @@ namespace Gum.Utilities
         /// Returns whether the order in which the blocks are available within an edge
         /// is relevant or not when picking a new option.
         /// </summary>
-        public static bool IsSequential(this RelationshipKind kind)
+        public static bool IsSequential(this EdgeKind kind)
         {
             switch (kind)
             {
-                case RelationshipKind.Next:
-                case RelationshipKind.IfElse:
+                case EdgeKind.Next:
+                case EdgeKind.IfElse:
+                case EdgeKind.Choice:
                     return true;
 
-                case RelationshipKind.Random:
-                case RelationshipKind.HighestScore:
-                case RelationshipKind.Choice:
+                case EdgeKind.Random:
+                case EdgeKind.HighestScore:
                     return false;
             }
 

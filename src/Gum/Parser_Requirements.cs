@@ -51,13 +51,6 @@ namespace Gum
                 // This is actually a "else" block!
                 line = line.Slice(Tokens.Else.Length);
                 currentColumn += Tokens.Else.Length;
-
-                if (!_script.CurrentSituation.SwitchRelationshipTo(RelationshipKind.IfElse))
-                {
-                    // We saw something like a (and) condition. This is not really valid for us.
-                    OutputHelpers.WriteWarning($"Invalid else '{Tokens.Else}' statement on {lineIndex}. " +
-                        $"There are no prior conditions found and it will be ignored.");
-                }
             }
 
             // Check if we started specifying the relationship from the previous requirement.

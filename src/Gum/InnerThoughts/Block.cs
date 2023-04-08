@@ -27,6 +27,10 @@ namespace Gum.InnerThoughts
         /// </summary>
         public int? GoTo = null;
 
+        public bool NonLinearNode = false;
+
+        public bool Conditional = false;
+
         public Block() { }
 
         public Block(int id) { Id = id; }
