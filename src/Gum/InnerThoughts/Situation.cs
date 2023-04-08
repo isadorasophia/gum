@@ -186,7 +186,7 @@ namespace Gum.InnerThoughts
 
                 case EdgeKind.HighestScore:
                 case EdgeKind.Random:
-                    nextEdge.Kind = EdgeKind.HighestScore;
+                    // nextEdge.Kind = EdgeKind.HighestScore;
                     break;
 
                 case EdgeKind.IfElse:

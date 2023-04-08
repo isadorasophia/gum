@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Data.Common;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Gum.InnerThoughts;
 using Gum.Utilities;
@@ -18,7 +20,7 @@ namespace Gum
         MultipleBlock = '+',
         BeginAction = '[',
         EndAction = ']',
-        OptionBlock = '>',
+        ChoiceBlock = '>',
         Flow = '@',
         Negative = '!',
         Debug = '%'
@@ -265,11 +267,11 @@ namespace Gum
                     }
                     else if (Defines(line, new TokenChar[] { 
                         TokenChar.Situation,
-                        TokenChar.OptionBlock,
+                        TokenChar.ChoiceBlock,
                         TokenChar.MultipleBlock, 
                         TokenChar.OnceBlock }))
                     {
-                        if (line.Length > 1 && line[1] == (char)TokenChar.OptionBlock)
+                        if (line.Length > 1 && line[1] == (char)TokenChar.ChoiceBlock)
                         {
                             // Actually a ->
                         }
@@ -300,6 +302,7 @@ namespace Gum
 
                         _currentBlock = result.Id;
                         hasCreatedJoinBlock = true;
+
                     }
                 }
                 else if (_indentationIndex > _lastIndentationIndex)
@@ -307,6 +310,26 @@ namespace Gum
                     // May be used if we end up creating a new block.
                     // (first indent obviously won't count)
                     isNestedBlock = _indentationIndex != 1;
+                }
+                
+                if (Defines(line, TokenChar.ChoiceBlock, $"{(char)TokenChar.ChoiceBlock}"))
+                {
+                    // If this declares another dialog, e.g.:
+                    // >> Option?
+                    // > Yes
+                    // > No!
+                    // >> Here comes another...
+                    // > Okay.
+                    // > Go away!
+                    // We need to make sure that the second title declares a new choice block. We do that by popping
+                    // the last option and the title.
+                    // The popping might have not come up before because they share the same indentation, so that's why we help them a little
+                    // bit here.
+                    if (_script.CurrentSituation.PeekLastBlock().IsChoice)
+                    {
+                        _script.CurrentSituation.PopLastBlock();
+                        _script.CurrentSituation.PopLastBlock();
+                    }
                 }
             }
 
@@ -451,7 +474,7 @@ namespace Gum
                     // -
                     case TokenChar.OnceBlock:
                         // Check whether this is actually a '->'
-                        if (!line.IsEmpty && line[0] == (char)TokenChar.OptionBlock)
+                        if (!line.IsEmpty && line[0] == (char)TokenChar.ChoiceBlock)
                         {
                             line = line.Slice(1);
                             column += 1;
@@ -468,7 +491,7 @@ namespace Gum
                         return ParseOption(line, index, column, joinLevel: 0, isNestedBlock);
 
                     // >
-                    case TokenChar.OptionBlock:
+                    case TokenChar.ChoiceBlock:
                         return ParseChoice(line, index, column, joinLevel: 0, isNestedBlock);
 
                     default:
@@ -488,13 +511,22 @@ namespace Gum
             return true;
         }
 
+        /// <summary>
+        /// This parses choices of the dialog. It expects the following line format:
+        ///     > Choice is happening
+        ///      ^ begin of span    ^ end of span
+        ///     >> Choice is happening
+        ///      ^ begin of span    ^ end of span
+        ///     + > Choice is happening
+        ///        ^ begin of span    ^ end of span
+        /// </summary>
         private bool ParseChoice(ReadOnlySpan<char> line, int lineIndex, int columnIndex, int joinLevel, bool nested)
         {
             line = line.TrimStart().TrimEnd();
 
             if (line.IsEmpty)
             {
-                OutputHelpers.WriteError($"Invalid empty choice '{(char)TokenChar.OptionBlock}' on line {lineIndex}.");
+                OutputHelpers.WriteError($"Invalid empty choice '{(char)TokenChar.ChoiceBlock}' on line {lineIndex}.");
                 OutputHelpers.ProposeFixAtColumn(
                     lineIndex,
                     columnIndex,
@@ -505,11 +537,11 @@ namespace Gum
                 return false;
             }
 
-            if (_script.CurrentSituation.PeekLastEdgeKind() != EdgeKind.Choice && line[0] != (char)TokenChar.OptionBlock)
+            if (_script.CurrentSituation.PeekLastEdgeKind() != EdgeKind.Choice && line[0] != (char)TokenChar.ChoiceBlock)
             {
                 ReadOnlySpan<char> newLine = _currentLine.AsSpan().Slice(0, columnIndex);
 
-                OutputHelpers.WriteError($"Expected a title prior to a choice block '{(char)TokenChar.OptionBlock}' on line {lineIndex}.");
+                OutputHelpers.WriteError($"Expected a title prior to a choice block '{(char)TokenChar.ChoiceBlock}' on line {lineIndex}.");
                 OutputHelpers.ProposeFixOnLineAbove(
                     lineIndex,
                     currentLine: _currentLine,
@@ -518,7 +550,7 @@ namespace Gum
                 return false;
             }
 
-            if (line[0] == (char)TokenChar.OptionBlock)
+            if (line[0] == (char)TokenChar.ChoiceBlock)
             {
                 // This is actually the title! So trim the first character.
                 line = line.Slice(1).TrimStart();
@@ -568,14 +600,17 @@ namespace Gum
             line = line.TrimStart();
             if (line.IsEmpty)
             {
-                OutputHelpers.WriteWarning($"Skipping empty dialog on line {lineIndex}.");
+                OutputHelpers.WriteWarning($"Skipping first empty dialog option in line {lineIndex}.");
                 return true;
             }
 
             if (line[0] == (char)TokenChar.BeginCondition)
             {
-                ParseConditions(line, lineIndex, columnIndex);
-                return true;
+                return ParseConditions(line.Slice(1), lineIndex, columnIndex + 1);
+            }
+            else if (line[0] == (char)TokenChar.ChoiceBlock)
+            {
+                return ParseChoice(line.Slice(1), lineIndex, columnIndex + 1, joinLevel: 0, nested: false);
             }
 
             AddLineToBlock(line);

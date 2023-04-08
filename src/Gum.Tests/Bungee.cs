@@ -206,6 +206,58 @@ namespace Gum.Tests
         }
 
         [TestMethod]
+        public void TestOptionsWithChoices()
+        {
+            const string situationText = @"
+=Choice
+    +   >> Settle down for a while?
+        > Rest my eyes...
+            [c:SaveCheckpointInteraction]
+        > Keep going.
+
+    +   >> Do you want it all to be all right?
+        > Just for a while.
+            [c:SaveCheckpointInteraction]
+        > Not now.";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.HighestScore, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1, 5 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2 }, target.Blocks);
+
+            target = situation.Edges[2];
+
+            Assert.AreEqual(EdgeKind.Choice, target.Kind);
+            Assert.AreEqual(2, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 3, 4 }, target.Blocks);
+
+            target = situation.Edges[5];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(5, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 6 }, target.Blocks);
+
+            target = situation.Edges[6];
+
+            Assert.AreEqual(EdgeKind.Choice, target.Kind);
+            Assert.AreEqual(6, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 7, 8 }, target.Blocks);
+        }
+
+        [TestMethod]
         public void TestLineAfterChoiceWithoutLeaves()
         {
             const string situationText = @"
