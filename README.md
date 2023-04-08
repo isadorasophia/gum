@@ -3,11 +3,11 @@
 ![Build Status](https://github.com/isadorasophia/gum/actions/workflows/ci.yaml/badge.svg)
 [![LICENSE](https://img.shields.io/github/license/isadorasophia/gum.svg)](LICENSE)
 
-gum is a tool that converts *.gum scripts into a narrative dialog dialog.
+gum is a tool that converts narrative scripts into a graph that can be read by C# metadata.
 
 ## Syntax
 
-```json
+```
 = new situation
 - executed once
 + executed multiple times
@@ -41,32 +41,4 @@ $ gum.exe <scripts_path> <out_path>
 #### Example
 ```shell
 $ gum.exe ../game/resources/dialogs ../game/src/project/packed/dialogs
-```
-
-## Installing
-### Building from source
-_From terminal_
-1. Open a terminal in the root directory
-2. `dotnet restore`
-3. `dotnet build`
-
-_From Visual Studio_
-1. Open `gum.sln` with Visual Studio 2022 17.4 or higher version (required for .NET 7)
-2. Build!
-
-### Pre-compiled binaries
-You can download the binaries at our [releases](https://github.com/isadorasophia/gum/releases/) page. Or with the command line:
-
-**ps1**
-```shell
-mkdir bin
-Invoke-WebRequest https://github.com/isadorasophia/gum/releases/download/v0.1/gum-v0.1-win-x64.zip -OutFile bin/parser.zip
-Expand-Archive bin/gum.zip -DestinationPath bin
-Remove-Item bin/gum.zip
-```
-
-**sh**
-```bash
-mkdir bin
-curl -sSL https://github.com/isadorasophia/gum/releases/download/v0.1/gum-v0.1-linux-x64.tar.gz | tar -xz --directory=bin
 ```
