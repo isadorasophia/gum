@@ -32,9 +32,9 @@ namespace Gum.InnerThoughts
         /// <summary>
         /// Create a line with a text. That won't be used as a timer.
         /// </summary>
-        public Line(string? speaker, string text) => (Speaker, Text) = (speaker, text);
+        public Line(string? speaker, string? portrait, string text) => (Speaker, Portrait, Text) = (speaker, portrait, text);
 
-        public static Line LineWithoutSpeaker(string text) => new(speaker: null, text);
+        public static Line LineWithoutSpeaker(string text) => new(speaker: null, portrait: null, text);
 
         public bool IsText => Text is not null;
     }

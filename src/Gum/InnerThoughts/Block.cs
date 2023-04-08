@@ -39,9 +39,9 @@ namespace Gum.InnerThoughts
 
         public Block(int id, int playUntil) { (Id, PlayUntil) = (id, playUntil); }
 
-        public void AddLine(ReadOnlySpan<char> text)
+        public void AddLine(string speaker, string? portrait, ReadOnlySpan<char> text)
         {
-            Lines.Add(new(Line.OWNER, text.ToString()));
+            Lines.Add(new(speaker, portrait, text.ToString()));
         }
 
         public void AddRequirement(CriterionNode node)

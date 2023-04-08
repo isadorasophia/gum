@@ -36,6 +36,26 @@ namespace Gum.Tests
         }
 
         [TestMethod]
+        public void TestSingleSentenceWithSpeaker()
+        {
+            const string situationText = @"
+=Encounter
+    speaker.happy: I just have one sentence.";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(target.Owner, 0);
+            CollectionAssert.AreEqual(new int[] { 1 }, target.Blocks);
+        }
+
+        [TestMethod]
         public void TestSimpleIf()
         {
             const string situationText = @"

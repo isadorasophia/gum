@@ -1,11 +1,6 @@
-﻿using System;
-using System.Diagnostics;
-using System.Reflection;
-using System.Text;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Gum.InnerThoughts;
 using Gum.Utilities;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Gum
 {
@@ -562,8 +557,7 @@ namespace Gum
 
             _currentBlock = result.Id;
 
-            Block.AddLine(line);
-
+            AddLineToBlock(line);
             return true;
         }
 
@@ -575,6 +569,8 @@ namespace Gum
                 relationshipKind = EdgeKind.Random;
             }
 
+            // TODO: Check for requirements!
+
             Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel, nested, relationshipKind);
             if (result is null)
             {
@@ -584,9 +580,7 @@ namespace Gum
 
             _currentBlock = result.Id;
 
-            line = line.TrimStart().TrimEnd();
-            Block.AddLine(line);
-
+            AddLineToBlock(line);
             return true;
         }
 
@@ -609,16 +603,6 @@ namespace Gum
                 _currentBlock = result.Id;
             }
 
-            return true;
-        }
-
-        private bool ParseLine(ReadOnlySpan<char> line, int _, int columnIndex, bool isNested)
-        {
-            CheckAndCreateLinearBlock(joinLevel: 0, isNested);
-
-            // This is probably just a line! So let's just read as it is.
-            // TODO: Check for speaker.
-            Block.AddLine(line);
             return true;
         }
 
