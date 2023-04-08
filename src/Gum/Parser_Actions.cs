@@ -33,6 +33,8 @@ namespace Gum
                 return true;
             }
 
+            CheckAndCreateLinearBlock(joinLevel: 0, isNested: false);
+
             if (line.StartsWith(Tokens.Component))
             {
                 line = line.Slice(Tokens.Component.Length);

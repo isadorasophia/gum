@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Gum.InnerThoughts;
 using Gum.Utilities;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Gum
 {
@@ -34,7 +35,7 @@ namespace Gum
 
     public partial class Parser
     {
-        private static readonly Regex _indentation = new Regex(@"^(\t|    )*", RegexOptions.Compiled);
+        private static readonly Regex _indentation = new Regex(@"^(\t|    |[-+]   )*", RegexOptions.Compiled);
         private const char _separatorChar = ' ';
 
         private readonly string[] _lines;
@@ -231,7 +232,7 @@ namespace Gum
                     return false;
                 }
 
-                if (end == line.Length)
+                if (end >= line.Length)
                 {
                     return false;
                 }
@@ -286,6 +287,14 @@ namespace Gum
                         else
                         {
                             _script.CurrentSituation.PopLastBlock();
+
+                            // We might need to do this check out of this switch case?
+                            if (_script.CurrentSituation.PeekLastBlock().IsChoice && 
+                                _script.CurrentSituation.PeekLastEdgeKind() != EdgeKind.Choice)
+                            {
+                                _script.CurrentSituation.PopLastBlock();
+                            }
+
                             createJoinBlock = false;
                         }
                     }
@@ -293,34 +302,22 @@ namespace Gum
                     // Depending where we were, we may need to "join" different branches.
                     if (createJoinBlock)
                     {
-                        _currentBlock = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel, isNested: false).Id;
+                        Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel, isNested: false);
+                        if (result is null)
+                        {
+                            OutputHelpers.WriteError($"Unable to join line {index}. Was the indentation correct?");
+                            return false;
+                        }
+
+                        _currentBlock = result.Id;
                         hasCreatedJoinBlock = true;
                     }
                 }
                 else if (_indentationIndex > _lastIndentationIndex)
                 {
                     // May be used if we end up creating a new block.
-                    isNestedBlock = true;
-
-                    if (Enum.IsDefined(typeof(TokenChar), (int)line[0]))
-                    {
-                        //switch ((TokenChar)line[0])
-                        //{
-                        //    case TokenChar.BeginAction:
-                        //    case TokenChar.OnceBlock:
-                        //        if (line.Length == 1 || line[1] != (char)TokenChar.OptionBlock)
-                        //        {
-                        //            // Actually a -
-                        //            break;
-                        //        }
-
-                        //        // These won't create a block by default, so let's make sure that is the case when the indentation happens.
-                        //        _currentBlock = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), join: false, isNested: true).Id;
-                        //        isNestedBlock = false;
-
-                        //        break;
-                        //}
-                    }
+                    // (first indent obviously won't count)
+                    isNestedBlock = _indentationIndex != 1;
                 }
             }
 
@@ -358,6 +355,7 @@ namespace Gum
 
                         // List of supported directives ('@'):
                         //  @random
+                        //  @order
                         //  @{number}
                         // ...that's all!
                         if (command.StartsWith("random"))
@@ -371,6 +369,10 @@ namespace Gum
                                 _random = true;
                             }
                         }
+                        else if (command.StartsWith("order"))
+                        {
+                            // No-op? This is already the default?
+                        }
                         else if (TryReadInteger(command) is int number)
                         {
                             if (hasCreatedJoinBlock)
@@ -379,7 +381,14 @@ namespace Gum
                             }
                             else
                             {
-                                _currentBlock = _script.CurrentSituation.AddBlock(number, joinLevel, isNestedBlock, EdgeKind.Next).Id;
+                                Block? result = _script.CurrentSituation.AddBlock(number, joinLevel, isNestedBlock, EdgeKind.Next);
+                                if (result is null)
+                                {
+                                    OutputHelpers.WriteError($"Unable to join line {index}. Was the indentation correct?");
+                                    return false;
+                                }
+
+                                _currentBlock = result.Id;
                             }
                         }
                         else
@@ -427,8 +436,15 @@ namespace Gum
                                 relationshipKind = EdgeKind.IfElse;
                             }
 
-                            _currentBlock = _script.CurrentSituation.AddBlock(
-                                ConsumePlayUntil(), joinLevel, isNestedBlock, relationshipKind).Id;
+                            Block? result = _script.CurrentSituation.AddBlock(
+                                ConsumePlayUntil(), joinLevel, isNestedBlock, relationshipKind);
+                            if (result is null)
+                            {
+                                OutputHelpers.WriteError($"Unable to create condition on line {index}.");
+                                return false;
+                            }
+
+                            _currentBlock = result.Id;
                         }
 
                         Block.Conditional = true;
@@ -460,7 +476,7 @@ namespace Gum
                             line = line.Slice(1);
                             column += 1;
 
-                            return ParseGoto(line, index, column);
+                            return ParseGoto(line, index, column, isNestedBlock);
                         }
 
                         _playUntil = 1;
@@ -481,7 +497,7 @@ namespace Gum
             }
             else
             {
-                return ParseLine(line, index, column);
+                return ParseLine(line, index, column, isNestedBlock);
             }
 
             if (!line.IsEmpty)
@@ -522,8 +538,29 @@ namespace Gum
                 return false;
             }
 
-            _currentBlock = _script.CurrentSituation.AddBlock(
-                ConsumePlayUntil(), joinLevel, nested, EdgeKind.Choice).Id;
+            if (line[0] == (char)TokenChar.OptionBlock)
+            {
+                // This is actually the title! So trim the first character.
+                line = line.Slice(1).TrimStart();
+            }
+
+            if (Enum.IsDefined(typeof(TokenChar), (int)line[0]))
+            {
+                OutputHelpers.WriteWarning($"Special tokens after a '>' will be ignored! Use a '\\' if this was what you meant. See line {lineIndex}.");
+                OutputHelpers.ProposeFix(
+                    lineIndex,
+                    before: _currentLine,
+                    after: _currentLine.TrimEnd().Replace($"{line[0]}", $"\\{line[0]}"));
+            }
+
+            Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel, nested, EdgeKind.Choice);
+            if (result is null)
+            {
+                OutputHelpers.WriteError($"Unable to create condition on line {lineIndex}. This may happen if you declare an else ('...') without a prior condition, for example.");
+                return false;
+            }
+
+            _currentBlock = result.Id;
 
             Block.AddLine(line);
 
@@ -538,8 +575,14 @@ namespace Gum
                 relationshipKind = EdgeKind.Random;
             }
 
-            _currentBlock = _script.CurrentSituation.AddBlock(
-                    ConsumePlayUntil(), joinLevel, nested, relationshipKind).Id;
+            Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel, nested, relationshipKind);
+            if (result is null)
+            {
+                OutputHelpers.WriteError($"Unable to create option on line {lineIndex}.");
+                return false;
+            }
+
+            _currentBlock = result.Id;
 
             line = line.TrimStart().TrimEnd();
             Block.AddLine(line);
@@ -547,13 +590,31 @@ namespace Gum
             return true;
         }
 
-        private bool ParseLine(ReadOnlySpan<char> line, int _, int __)
+        private bool CheckAndCreateLinearBlock(int joinLevel, bool isNested)
         {
-            if (_script.CurrentSituation.Blocks.Count == 1)
-            {                      
-                _currentBlock = _script.CurrentSituation.AddBlock(
-                    ConsumePlayUntil(), joinLevel: 0, isNested: false, EdgeKind.Next).Id;
+            // We only create a new block for a line when:
+            //  - this is actually the root (or first) node
+            //  - previous line was a choice (without a conditional).
+            if (_script.CurrentSituation.Blocks.Count == 1 ||
+                (isNested && Block.IsChoice && !Block.Conditional))
+            {
+                Block? result = _script.CurrentSituation.AddBlock(
+                    ConsumePlayUntil(), joinLevel, isNested: false, EdgeKind.Next);
+
+                if (result is null)
+                {
+                    return false;
+                }
+
+                _currentBlock = result.Id;
             }
+
+            return true;
+        }
+
+        private bool ParseLine(ReadOnlySpan<char> line, int _, int columnIndex, bool isNested)
+        {
+            CheckAndCreateLinearBlock(joinLevel: 0, isNested);
 
             // This is probably just a line! So let's just read as it is.
             // TODO: Check for speaker.
@@ -561,8 +622,10 @@ namespace Gum
             return true;
         }
 
-        private bool ParseGoto(ReadOnlySpan<char> line, int lineIndex, int currentColumn)
+        private bool ParseGoto(ReadOnlySpan<char> line, int lineIndex, int currentColumn, bool isNested)
         {
+            CheckAndCreateLinearBlock(joinLevel: 0, isNested);
+
             // Check if we started specifying the relationship from the previous requirement.
             ReadOnlySpan<char> location = line.Trim();
             if (location.IsEmpty)

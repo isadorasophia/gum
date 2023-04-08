@@ -5,7 +5,7 @@ VisualStudioVersion = 17.5.33402.96
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum", "src\Gum\Gum.csproj", "{45F3B763-195A-4043-B775-B2A5D6B6DFA8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gum.Tests", "Gum.Tests\Gum.Tests.csproj", "{5187E4FE-E651-4270-8030-1FDB58AC945C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gum.Tests", "src\Gum.Tests\Gum.Tests.csproj", "{5187E4FE-E651-4270-8030-1FDB58AC945C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

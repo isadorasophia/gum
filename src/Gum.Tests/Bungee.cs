@@ -60,6 +60,42 @@ namespace Gum.Tests
         }
 
         [TestMethod]
+        public void TestOrderChoice()
+        {
+            const string situationText = @"
+=Encounter
+    @order
+        - Hello
+        + Bye!
+
+    -> exit!";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.HighestScore, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1, 2 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 3 }, target.Blocks);
+
+            target = situation.Edges[2];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(2, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 3 }, target.Blocks);
+        }
+
+        [TestMethod]
         public void TestLineAfterChoice()
         {
             const string situationText = @"
@@ -68,10 +104,10 @@ namespace Gum.Tests
         Do you hate socks!
 
         >> Hate socks?
-            > Hell yeah!
-                -> exit!
-            > Why would I?
-                -> exit!
+        > Hell yeah!
+            -> exit!
+        > Why would I?
+            -> exit!
 
     Okay, bye!";
 
@@ -85,7 +121,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(0, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 1, 5 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 1, 7 }, target.Blocks);
 
             target = situation.Edges[1];
 
@@ -97,7 +133,19 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Choice, target.Kind);
             Assert.AreEqual(2, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 3, 4 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 3, 5 }, target.Blocks);
+
+            target = situation.Edges[3];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(3, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
+
+            target = situation.Edges[5];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(5, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 6 }, target.Blocks);
         }
 
         [TestMethod]
@@ -109,10 +157,10 @@ namespace Gum.Tests
         Do you hate socks!
 
         >> Hate socks?
-            > Hell yeah!
-                Okay.
-            > Why would I?
-                Yeah??
+        > Hell yeah!
+            Okay.
+        > Why would I?
+            Yeah??
 
     Okay, bye!";
 
@@ -126,7 +174,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(0, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 1, 5 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 1, 7 }, target.Blocks);
 
             target = situation.Edges[1];
 
@@ -138,13 +186,98 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Choice, target.Kind);
             Assert.AreEqual(2, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 3, 4 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 3, 5 }, target.Blocks);
 
             target = situation.Edges[3];
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(3, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 5 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
+
+            target = situation.Edges[4];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(4, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 7 }, target.Blocks);
+
+            target = situation.Edges[5];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(5, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 6 }, target.Blocks);
+
+            target = situation.Edges[6];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(6, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 7 }, target.Blocks);
+        }
+
+        [TestMethod]
+        public void TestChoiceWithAction()
+        {
+            const string situationText = @"
+=Dinner
+    >> Hate socks?
+    > Hell yeah!
+        [FireOnSocks=true]
+    > Why would I?
+        [c:GoAwayInteraction]";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.Choice, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2, 3 }, target.Blocks);
+        }
+
+        [TestMethod]
+        public void TestChoiceWithNestedBlock()
+        {
+            const string situationText = @"
+=Dinner
+    >> Hate socks?
+    > Hell yeah!
+        (LookForFire)
+            Yes...?
+    > Why would I?
+        No!";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.Choice, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2, 4 }, target.Blocks);
+
+            target = situation.Edges[2];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(2, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 3 }, target.Blocks);
 
             target = situation.Edges[4];
 
@@ -162,10 +295,10 @@ namespace Gum.Tests
         Do you hate socks!
 
         >> Hate socks?
-            > Hell yeah!
-                -> DestroyAll
-            > Why would I?
-                -> Sorry
+        > Hell yeah!
+            -> DestroyAll
+        > Why would I?
+            -> Sorry
 
     (...Socks > 1 and Socks < 5)
         thief: What about socks that you hate?
@@ -190,7 +323,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.IfElse, target.Kind);
             Assert.AreEqual(0, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 1, 5, 6 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 1, 7, 8 }, target.Blocks);
 
             target = situation.Edges[1];
 
@@ -202,13 +335,25 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Choice, target.Kind);
             Assert.AreEqual(2, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 3, 4 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 3, 5 }, target.Blocks);
 
-            target = situation.Edges[6];
+            target = situation.Edges[3];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(3, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
+
+            target = situation.Edges[5];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(5, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 6 }, target.Blocks);
+
+            target = situation.Edges[8];
 
             Assert.AreEqual(EdgeKind.HighestScore, target.Kind);
-            Assert.AreEqual(6, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 7, 8, 9 }, target.Blocks);
+            Assert.AreEqual(8, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 9, 10, 11 }, target.Blocks);
         }
 
         [TestMethod]

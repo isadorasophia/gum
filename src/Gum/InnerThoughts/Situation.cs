@@ -89,6 +89,8 @@ namespace Gum.InnerThoughts
 
         internal EdgeKind PeekLastEdgeKind() => LastEdge.Kind;
 
+        internal Block PeekLastBlock() => Blocks[_lastBlocks.Peek()];
+
         /// <summary>
         /// Creates a new block subjected to a <paramref name="kind"/> relationship.
         /// </summary>
@@ -123,7 +125,9 @@ namespace Gum.InnerThoughts
             }
 
             Block block = CreateBlock(playUntil, track: true);
+
             block.NonLinearNode = !kind.IsSequential();
+            block.IsChoice = kind == EdgeKind.Choice;
 
             Edge? edge = CreateEdge(EdgeKind.Next);
             AssignOwnerToEdge(block.Id, edge);
@@ -358,7 +362,6 @@ namespace Gum.InnerThoughts
 
             bool addToParent = true;
 
-            Edge edge;
             if (leafBlocks.Count != 0)
             {
                 foreach (int i in leafBlocks)

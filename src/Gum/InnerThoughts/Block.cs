@@ -29,6 +29,8 @@ namespace Gum.InnerThoughts
 
         public bool NonLinearNode = false;
 
+        public bool IsChoice = false;
+
         public bool Conditional = false;
 
         public Block() { }

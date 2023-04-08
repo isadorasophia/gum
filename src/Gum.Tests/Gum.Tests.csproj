@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\Gum\Gum.csproj" />
+    <ProjectReference Include="..\Gum\Gum.csproj" />
   </ItemGroup>
 
 </Project>
