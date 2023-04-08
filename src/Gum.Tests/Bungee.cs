@@ -1,5 +1,6 @@
 using Gum.InnerThoughts;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 using System.Text.RegularExpressions;
 
 namespace Gum.Tests
@@ -10,9 +11,44 @@ namespace Gum.Tests
         private CharacterScript? Read(string input)
         {
             string[] lines = Regex.Split(input, @"\r?\n|\r");
-            Parser parser = new(lines);
+            Parser parser = new("Test", lines);
 
             return parser.Start();
+        }
+
+        [TestMethod]
+        public void TestSerialization()
+        {
+            const string path = "./resources";
+
+            CharacterScript[] results = Reader.Parse(path, out string errors);
+
+            Assert.IsTrue(string.IsNullOrEmpty(errors));
+            Assert.AreEqual(1, results.Length);
+
+            IEnumerable<Situation> situations = results[0].FetchAllSituations();
+            Assert.AreEqual(3, situations.Count());
+        }
+
+        [TestMethod]
+        public void TestDeserialization()
+        {
+            const string path = "./resources";
+
+            CharacterScript[] results = Reader.Parse(path, out string errors);
+
+            Assert.IsTrue(string.IsNullOrEmpty(errors));
+            Assert.AreEqual(1, results.Length);
+
+            CharacterScript script = results[0];
+            string json = JsonConvert.SerializeObject(script, Reader.Settings);
+
+            CharacterScript? deserializedScript = JsonConvert.DeserializeObject<CharacterScript>(json);
+
+            Assert.IsNotNull(deserializedScript);
+
+            IEnumerable<Situation> situations = deserializedScript.FetchAllSituations();
+            Assert.AreEqual(3, situations.Count());
         }
 
         [TestMethod]

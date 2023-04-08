@@ -15,7 +15,9 @@ namespace Gum.InnerThoughts
         [JsonProperty]
         private int _nextId = 0;
 
-        public CharacterScript() { }
+        public readonly string Name;
+
+        public CharacterScript(string name) { Name = name; }
 
         private Situation? _currentSituation;
 
@@ -62,5 +64,7 @@ namespace Gum.InnerThoughts
         }
 
         public string[] FetchAllNames() => _situationNames.Keys.ToArray();
+
+        public IEnumerable<Situation> FetchAllSituations() => _situations.Values;
     }
 }

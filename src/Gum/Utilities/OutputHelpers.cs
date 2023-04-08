@@ -1,11 +1,24 @@
 ﻿using System;
-using System.Diagnostics.Metrics;
 using Gum.Attributes;
 
 namespace Gum.Utilities
 {
     internal static class OutputHelpers
     {
+        internal static DiagnosticLevel Level = DiagnosticLevel.All;
+
+        public static void Log(string message)
+        {
+            if (Level == DiagnosticLevel.ErrorsOnly)
+            {
+                return;
+            }
+
+            Console.ForegroundColor = ConsoleColor.Magenta;
+            Console.WriteLine(message);
+            Console.ResetColor();
+        }
+
         public static void WriteError(string message)
         {
             Console.ForegroundColor = ConsoleColor.Red;

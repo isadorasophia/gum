@@ -42,7 +42,7 @@ namespace Gum
         /// Each parser will consist into a single script.
         /// The owner shall be assigned once this gets instantiated in the engine.
         /// </summary>
-        private readonly CharacterScript _script = new();
+        private readonly CharacterScript _script;
 
         /// <summary>
         /// The current block of dialog that currently belong to <see cref="CharacterScript.CurrentSituation"/>.
@@ -101,12 +101,13 @@ namespace Gum
         {
             string[] lines = File.ReadAllLines(file);
 
-            Parser parser = new(lines);
+            Parser parser = new(name: Path.GetFileNameWithoutExtension(file), lines);
             return parser.Start();
         }
 
-        internal Parser(string[] lines)
+        internal Parser(string name, string[] lines)
         {
+            _script = new(name);
             _lines = lines;
         }
 
@@ -162,6 +163,8 @@ namespace Gum
             {
                 return null;
             }
+
+            _ = Trim();
 
             return _script;
         }
