@@ -116,6 +116,43 @@ namespace Gum.Tests
         }
 
         [TestMethod]
+        public void TestChoicesWithRules()
+        {
+            const string situationText = @"
+=Encounter
+    - (HasIceCream)
+        This seems a pretty good ice cream.
+    - (!HasIceCream)
+        What do you have there??
+    - (WithoutCoins and HasIceCream)
+        Maybe you want to sell that ice cream of yours?";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.HighestScore, target.Kind);
+            Assert.AreEqual(target.Owner, 0);
+            CollectionAssert.AreEqual(new int[] { 1, 2, 3 }, target.Blocks);
+
+            Block block = situation.Blocks[1];
+            Assert.AreEqual(1, block.Requirements.Count);
+            Assert.AreEqual(1, block.Lines.Count);
+
+            block = situation.Blocks[2];
+            Assert.AreEqual(1, block.Requirements.Count);
+            Assert.AreEqual(1, block.Lines.Count);
+
+            block = situation.Blocks[3];
+            Assert.AreEqual(2, block.Requirements.Count);
+            Assert.AreEqual(1, block.Lines.Count);
+        }
+
+        [TestMethod]
         public void TestLineAfterChoice()
         {
             const string situationText = @"
@@ -331,7 +368,11 @@ namespace Gum.Tests
         -   thief: Can you not look at me?
             What if I do.
 
-        +   Happy birthday! I bought you socks.";
+        +   Happy birthday! I bought you socks.
+
+= DestroyAll
+
+= Sorry";
 
             CharacterScript? script = Read(situationText);
             Assert.IsTrue(script != null);
@@ -467,7 +508,8 @@ namespace Gum.Tests
     (...)
         -> Bye
 
-=Bye";
+=Bye
+=Hey!?";
 
             CharacterScript? script = Read(situationText);
             Assert.IsTrue(script != null);

@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json;
-using System.Collections.Immutable;
 
 namespace Gum.InnerThoughts
 {
@@ -10,6 +9,8 @@ namespace Gum.InnerThoughts
         /// </summary>
         [JsonProperty]
         private readonly SortedList<int, Situation> _situations = new();
+
+        private readonly Dictionary<string, int> _situationNames = new();
 
         [JsonProperty]
         private int _nextId = 0;
@@ -23,12 +24,21 @@ namespace Gum.InnerThoughts
 
         public bool HasCurrentSituation => _currentSituation != null;
         
-        public void AddNewSituation(ReadOnlySpan<char> name)
+        public bool AddNewSituation(ReadOnlySpan<char> name)
         {
             int id = _nextId++;
 
-            _currentSituation = new Situation(id, name.ToString());
+            string situationName = name.TrimStart().TrimEnd().ToString();
+            if (_situationNames.ContainsKey(situationName))
+            {
+                return false;
+            }
+
+            _currentSituation = new Situation(id, situationName);
+
             _situations.Add(id, _currentSituation);
+            _situationNames.Add(situationName, id);
+            return true;
         }
 
         public Situation? FetchSituation(int id)
@@ -40,5 +50,17 @@ namespace Gum.InnerThoughts
 
             return null;
         }
+
+        public int? FetchSituationId(string name)
+        {
+            if (_situationNames.TryGetValue(name, out int id))
+            {
+                return id;
+            }
+
+            return null;
+        }
+
+        public string[] FetchAllNames() => _situationNames.Keys.ToArray();
     }
 }

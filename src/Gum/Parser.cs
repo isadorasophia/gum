@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System;
+using System.Text.RegularExpressions;
 using Gum.InnerThoughts;
 using Gum.Utilities;
 
@@ -107,8 +108,6 @@ namespace Gum
             _lines = lines;
         }
 
-        private int _indentBuffer = 0;
-
         internal CharacterScript? Start()
         {
             int index = 0;
@@ -145,16 +144,6 @@ namespace Gum
 
                 if (lineNoIndent.IsEmpty) continue;
 
-                if (_indentationIndex < _lastIndentationIndex)
-                {
-                    _indentBuffer += 1;
-                }
-
-                if (Defines(lineNoIndent, TokenChar.BeginCondition))
-                {
-                    _indentBuffer -= 1;
-                }
-
                 if (!ProcessLine(lineNoIndent, index, column))
                 {
                     return null;
@@ -165,6 +154,11 @@ namespace Gum
                     OutputHelpers.WriteError($"Expected a situation (=) to be declared before line {index}.");
                     return null;
                 }
+            }
+
+            if (!ResolveAllGoto())
+            {
+                return null;
             }
 
             return _script;
@@ -336,7 +330,14 @@ namespace Gum
                             return false;
                         }
 
-                        _script.AddNewSituation(line);
+                        if (!_script.AddNewSituation(line))
+                        {
+                            OutputHelpers.WriteError($"Situation of name '{line}' has been declared twice on line {index}.");
+                            OutputHelpers.ProposeFix(index, before: _currentLine, after: $"{_currentLine} 2");
+
+                            return false;
+                        }
+
                         return true;
 
                     // @
@@ -407,22 +408,6 @@ namespace Gum
 
                     // (
                     case TokenChar.BeginCondition:
-                        // Check for the end of the condition block ')'
-                        int endColumn = MemoryExtensions.IndexOf(line, (char)TokenChar.EndCondition);
-                        if (endColumn == -1)
-                        {
-                            OutputHelpers.WriteError($"Missing matching '{(char)TokenChar.EndCondition}' on line {index}.");
-                            OutputHelpers.ProposeFix(
-                                index, 
-                                before: _currentLine, 
-                                after: _currentLine.TrimEnd() + (char)TokenChar.EndCondition);
-
-                            return false;
-                        }
-
-                        // Create the condition block.
-
-                        line = line.Slice(0, endColumn);
                         if (!hasCreatedJoinBlock)
                         {
                             EdgeKind relationshipKind = EdgeKind.Next;
@@ -580,6 +565,19 @@ namespace Gum
 
             _currentBlock = result.Id;
 
+            line = line.TrimStart();
+            if (line.IsEmpty)
+            {
+                OutputHelpers.WriteWarning($"Skipping empty dialog on line {lineIndex}.");
+                return true;
+            }
+
+            if (line[0] == (char)TokenChar.BeginCondition)
+            {
+                ParseConditions(line, lineIndex, columnIndex);
+                return true;
+            }
+
             AddLineToBlock(line);
             return true;
         }
@@ -611,7 +609,7 @@ namespace Gum
             CheckAndCreateLinearBlock(joinLevel: 0, isNested);
 
             // Check if we started specifying the relationship from the previous requirement.
-            ReadOnlySpan<char> location = line.Trim();
+            ReadOnlySpan<char> location = line.TrimStart().TrimEnd();
             if (location.IsEmpty)
             {
                 // We saw something like a (and) condition. This is not really valid for us.
@@ -653,6 +651,23 @@ namespace Gum
         /// <returns>Whether it succeeded parsing the line.</returns>
         private bool ParseConditions(ReadOnlySpan<char> line, int lineIndex, int currentColumn)
         {
+            // Check for the end of the condition block ')'
+            int endColumn = MemoryExtensions.IndexOf(line, (char)TokenChar.EndCondition);
+            if (endColumn == -1)
+            {
+                OutputHelpers.WriteError($"Missing matching '{(char)TokenChar.EndCondition}' on line {lineIndex}.");
+                OutputHelpers.ProposeFix(
+                    lineIndex,
+                    before: _currentLine,
+                    after: _currentLine.TrimEnd() + (char)TokenChar.EndCondition);
+
+                return false;
+            }
+
+            // Create the condition block.
+
+            line = line.Slice(0, endColumn).TrimEnd();
+
             while (true)
             {
                 ReadOnlySpan<char> previousLine = line;
