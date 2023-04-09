@@ -1,6 +1,6 @@
 ﻿namespace Gum.InnerThoughts
 {
-    internal enum EdgeKind
+    public enum EdgeKind
     {
         /// <summary>
         /// This will pick in consecutive order, whatever matches first.

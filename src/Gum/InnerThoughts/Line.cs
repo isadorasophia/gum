@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
 namespace Gum.InnerThoughts
 {

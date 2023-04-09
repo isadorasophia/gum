@@ -10,7 +10,7 @@ namespace Gum
     /// <summary>
     /// This is the parser entrypoint when converting .gum -> metadata.
     /// </summary>
-    internal class Reader
+    public class Reader
     {
         /// <param name="arguments">
         /// This expects the following arguments:
@@ -47,7 +47,7 @@ namespace Gum
                 return;
             }
 
-            CharacterScript[] scripts = ParseImplementation(inputPath: arguments[0], DiagnosticLevel.All);
+            CharacterScript[] scripts = ParseImplementation(inputPath: arguments[0], lastModified: null, DiagnosticLevel.All);
 
             foreach (CharacterScript script in scripts)
             {
@@ -82,13 +82,13 @@ namespace Gum
         /// <summary>
         /// This will parse all the documents in <paramref name="inputPath"/>.
         /// </summary>
-        public static CharacterScript[] Parse(string inputPath, out string errors)
+        public static CharacterScript[] Parse(string inputPath, DateTime? lastModified, out string errors)
         {
             StringWriter writer = new();
 
             Console.SetOut(writer);
 
-            CharacterScript[] result = ParseImplementation(inputPath, DiagnosticLevel.ErrorsOnly);
+            CharacterScript[] result = ParseImplementation(inputPath, lastModified, DiagnosticLevel.ErrorsOnly);
             errors = writer.ToString();
 
             return result;
@@ -97,7 +97,7 @@ namespace Gum
         /// <summary>
         /// This will parse all the documents in <paramref name="inputPath"/>.
         /// </summary>
-        private static CharacterScript[] ParseImplementation(string inputPath, DiagnosticLevel level)
+        private static CharacterScript[] ParseImplementation(string inputPath, DateTime? lastModified, DiagnosticLevel level)
         {
             OutputHelpers.Level = level;
 
@@ -105,7 +105,7 @@ namespace Gum
 
             List<CharacterScript> scripts = new List<CharacterScript>();
 
-            IEnumerable<string> files = GetAllLibrariesInPath(inputPath);
+            IEnumerable<string> files = GetAllLibrariesInPath(inputPath, lastModified);
             foreach (string file in files)
             {
                 OutputHelpers.Log($"✨ Compiling {Path.GetFileName(file)}...");
@@ -138,7 +138,7 @@ namespace Gum
         /// Look recursively for all the files in <paramref name="path"/>.
         /// </summary>
         /// <param name="path">Rooted path to the binaries folder. This must be a valid directory.</param>
-        private static IEnumerable<string> GetAllLibrariesInPath(in string path)
+        private static IEnumerable<string> GetAllLibrariesInPath(in string path, DateTime? lastModified)
         {
             if (File.Exists(path))
             {
@@ -152,10 +152,18 @@ namespace Gum
             }
 
             // 1. Filter all files that has a "*.gum" extension.
-            // 3. Distinguish the file names.
-            return Directory.EnumerateFiles(path, "*.gum", SearchOption.AllDirectories)
+            // 2. Distinguish the file names.
+            IEnumerable<string> paths = Directory.EnumerateFiles(path, "*.gum", SearchOption.AllDirectories)
                 .GroupBy(s => Path.GetFileName(s))
                 .Select(s => s.First());
+
+            if (lastModified is not null)
+            {
+                // Only select files that have been modifier prior to a specific date.
+                paths = paths.Where(s => File.GetLastWriteTime(s) > lastModified);
+            }
+
+            return paths;
         }
     }
 }

@@ -5,7 +5,7 @@ using System.Text;
 namespace Gum.InnerThoughts
 {
     [DebuggerDisplay("{DebuggerDisplay(),nq}")]
-    internal class Block
+    public class Block
     {
         public readonly int Id = 0;
 
@@ -39,9 +39,9 @@ namespace Gum.InnerThoughts
 
         public Block(int id, int playUntil) { (Id, PlayUntil) = (id, playUntil); }
 
-        public void AddLine(string speaker, string? portrait, ReadOnlySpan<char> text)
+        public void AddLine(string speaker, string? portrait, string text)
         {
-            Lines.Add(new(speaker, portrait, text.ToString()));
+            Lines.Add(new(speaker, portrait, text));
         }
 
         public void AddRequirement(CriterionNode node)

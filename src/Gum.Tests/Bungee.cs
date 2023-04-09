@@ -21,7 +21,7 @@ namespace Gum.Tests
         {
             const string path = "./resources";
 
-            CharacterScript[] results = Reader.Parse(path, out string errors);
+            CharacterScript[] results = Reader.Parse(path, lastModified: null, out string errors);
 
             Assert.IsTrue(string.IsNullOrEmpty(errors));
             Assert.AreEqual(1, results.Length);
@@ -35,7 +35,7 @@ namespace Gum.Tests
         {
             const string path = "./resources";
 
-            CharacterScript[] results = Reader.Parse(path, out string errors);
+            CharacterScript[] results = Reader.Parse(path, lastModified: null, out string errors);
 
             Assert.IsTrue(string.IsNullOrEmpty(errors));
             Assert.AreEqual(1, results.Length);

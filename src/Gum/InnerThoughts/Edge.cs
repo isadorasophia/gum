@@ -9,7 +9,7 @@ namespace Gum.InnerThoughts
     /// The relationship kind is how it will pick the next candidate.
     /// </summary>
     [DebuggerDisplay("{DebuggerDisplay(),nq}")]
-    internal class Edge
+    public class Edge
     {
         public EdgeKind Kind = EdgeKind.Next;
 

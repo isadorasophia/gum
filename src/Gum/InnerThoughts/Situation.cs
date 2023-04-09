@@ -5,7 +5,7 @@ using System.Diagnostics;
 namespace Gum.InnerThoughts
 {
     [DebuggerDisplay("{Name}")]
-    internal class Situation
+    public class Situation
     {
         [JsonProperty]
         public readonly int Id = 0;

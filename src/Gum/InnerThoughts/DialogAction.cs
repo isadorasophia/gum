@@ -6,7 +6,7 @@ using Gum.Utilities;
 namespace Gum.InnerThoughts
 {
     [DebuggerDisplay("{DebuggerDisplay(),nq}")]
-    internal class DialogAction
+    public class DialogAction
     {
         public readonly Fact Fact = new();
 

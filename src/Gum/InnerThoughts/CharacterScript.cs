@@ -2,7 +2,7 @@
 
 namespace Gum.InnerThoughts
 {
-    internal class CharacterScript
+    public class CharacterScript
     {
         /// <summary>
         /// List of tasks or events that the <see cref="Situations"/> may do.

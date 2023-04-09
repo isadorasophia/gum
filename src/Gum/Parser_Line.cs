@@ -4,6 +4,7 @@ namespace Gum
 {
     internal static partial class Tokens
     {
+        public const char EscapeToken = '\\';
         public const char SpeakerToken = ':';
         public const char SpeakerPortraitToken = '.';
     }
@@ -29,7 +30,7 @@ namespace Gum
 
             line = line.TrimStart().TrimEnd();
 
-            Block.AddLine(speaker, portrait, line);
+            Block.AddLine(speaker, portrait, line.ToString().Replace("\\", ""));
         }
 
         /// <summary>
@@ -57,9 +58,9 @@ namespace Gum
                 return (speaker, portrait);
             }
 
-            // First, check if there is a namespace specified.
+            // First, check if there is a speaker specified and look for the escape token.
             end = speakerText.IndexOf(Tokens.SpeakerToken);
-            if (end == -1)
+            if (end == -1 || speakerText[end-1] == Tokens.EscapeToken)
             {
                 return (speaker, portrait);
             }
