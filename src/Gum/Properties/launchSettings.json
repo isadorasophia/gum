@@ -2,7 +2,7 @@
   "profiles": {
     "Gum": {
       "commandName": "Project",
-      "commandLineArgs": "\"D:\\dev\\road\\resources\\dialogs\" \"D:\\dev\\road\\src\\Road\\packed\\dialogs\""
+      "commandLineArgs": "\"D:\\dev\\road\\resources\\dialogs\\cook.gum\" \"D:\\dev\\road\\src\\Road\\packed\\dialogs\""
     }
   }
 }

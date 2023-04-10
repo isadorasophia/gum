@@ -403,6 +403,20 @@ namespace Gum
                             }
                             else
                             {
+                                if (Defines(line.Slice(end), TokenChar.BeginCondition, Tokens.Else))
+                                {
+                                    OutputHelpers.WriteError($"Flow directive '{(char)TokenChar.Flow}' is not supported on else blocks on line {index}.");
+
+                                    ReadOnlySpan<char> newLine = _currentLine.AsSpan().Slice(0, _currentLine.IndexOf('('));
+                                    OutputHelpers.ProposeFixOnLineBelow(
+                                        index,
+                                        _currentLine,
+                                        newLine: Regex.Replace(_currentLine, "  @[0-9]", ""),
+                                        newLineBelow: string.Concat("    ", newLine));
+
+                                    return false;
+                                }
+
                                 Block? result = _script.CurrentSituation.AddBlock(number, joinLevel, isNestedBlock, EdgeKind.Next);
                                 if (result is null)
                                 {
@@ -436,6 +450,8 @@ namespace Gum
                     case TokenChar.BeginCondition:
                         if (!hasCreatedJoinBlock)
                         {
+                            int playUntil = ConsumePlayUntil();
+
                             EdgeKind relationshipKind = EdgeKind.Next;
                             if (line.StartsWith(Tokens.Else))
                             {
@@ -443,7 +459,7 @@ namespace Gum
                             }
 
                             Block? result = _script.CurrentSituation.AddBlock(
-                                ConsumePlayUntil(), joinLevel, isNestedBlock, relationshipKind);
+                                playUntil, joinLevel, isNestedBlock, relationshipKind);
                             if (result is null)
                             {
                                 OutputHelpers.WriteError($"Unable to create condition on line {index}.");

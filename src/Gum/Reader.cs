@@ -54,9 +54,12 @@ namespace Gum
                 _ = Save(script, outputPath);
             }
 
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"🪄 Success! Successfully saved output at {outputPath}.");
-            Console.ResetColor();
+            if (scripts.Length > 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"🪄 Success! Successfully saved output at {outputPath}.");
+                Console.ResetColor();
+            }
         }
 
         internal static bool Save(CharacterScript script, string path)

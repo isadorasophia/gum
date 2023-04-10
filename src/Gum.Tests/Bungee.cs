@@ -72,6 +72,28 @@ namespace Gum.Tests
         }
 
         [TestMethod]
+        public void TestSingleCondition()
+        {
+            const string situationText = @"
+=Encounter
+    (!HasSeenThis)
+        Wow! Have you seen this?";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Block block = situation.Blocks[1];
+
+            Assert.AreEqual(1, block.Requirements.Count);
+            Assert.AreEqual(CriterionNodeKind.And, block.Requirements[0].Kind);
+            Assert.AreEqual(CriterionKind.Different, block.Requirements[0].Criterion.Kind);
+            Assert.AreEqual(true, block.Requirements[0].Criterion.BoolValue);
+        }
+
+        [TestMethod]
         public void TestSingleSentenceWithSpeaker()
         {
             const string situationText = @"
