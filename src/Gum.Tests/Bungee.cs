@@ -795,7 +795,8 @@ namespace Gum.Tests
             CollectionAssert.AreEqual(new int[] { 7, 15 }, target.Blocks);
         }
 
-        [TestMethod] public void TestNestedCondition3()
+        [TestMethod]
+        public void TestNestedCondition3()
         {
             const string situationText = @"
 =Encounter
@@ -1055,7 +1056,127 @@ namespace Gum.Tests
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(6, target.Owner);
             CollectionAssert.AreEqual(new int[] { 7 }, target.Blocks);
+        }
 
+        [TestMethod]
+        public void TestNestedCondition7()
+        {
+            const string situationText = @"
+=Encounter
+    (Meet and PreviouslySaidBye)
+        @1
+            Hi! But only once.
+
+            -> exit!
+
+        (DatesTogether >= 1)
+            I guess this is really like meeting again...?
+
+    (...!StillHasJob)
+        (ChocolateAmount == 0)
+            @1  
+                Out of chocolates?
+                Again...?
+
+        (...ChocolateAmount >= 1)
+            - I mean, chocolates are great!
+
+            - Until they aren't.
+    (...)
+        @1  I am embarassed.
+            Bye.
+
+=Random";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.IfElse, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1, 4, 10 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2, 3 }, target.Blocks);
+
+            target = situation.Edges[4];
+
+            Assert.AreEqual(EdgeKind.IfElse, target.Kind);
+            Assert.AreEqual(4, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 5, 7 }, target.Blocks);
+
+            target = situation.Edges[5];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(5, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 6 }, target.Blocks);
+
+            target = situation.Edges[7];
+
+            Assert.AreEqual(EdgeKind.HighestScore, target.Kind);
+            Assert.AreEqual(7, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 8, 9 }, target.Blocks);
+
+            target = situation.Edges[10];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(10, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 11 }, target.Blocks);
+        }
+
+
+        [TestMethod]
+        public void TestNestedCondition8()
+        {
+            const string situationText = @"
+=Encounter
+    (!Meet and !Greet) 
+        @order
+            - I will go now.
+            + Hello!?
+
+        -> exit!";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            // This edge currently has an extra edge to 4.
+            // This technically doesn't make sense because 1 will always be chosen.
+            // I *think* we could do some fancy inference around leaves? But for now,
+            // I will leave it like this.
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1, 4 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.HighestScore, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2, 3 }, target.Blocks);
+
+            target = situation.Edges[2];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(2, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
+
+            target = situation.Edges[3];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(3, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
         }
     }
 }

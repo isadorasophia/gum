@@ -335,18 +335,30 @@ namespace Gum.InnerThoughts
 
             while (_lastBlocks.Count > 1 && joinLevel-- > 0)
             {
-                int block = _lastBlocks.Pop();
+                int blockId = _lastBlocks.Pop();
+
+                Block block = Blocks[blockId];
 
                 // When I said I would allow one (1) hacky code, I lied.
                 // This is another one.
                 // SO, the indentation gets really weird for conditionals, as we pretty
                 // much disregard one indent? I found that the best approach to handle this is 
                 // manually cleaning up the stack when there is NOT a conditional block on join.
-                if (Blocks[block].NonLinearNode)
-                {
-                    // no-op.
+                // This is also true for @[0-9] blocks, since those add an extra indentation.
+                if (block.NonLinearNode)
+                { 
+                    if (Edges[ParentOf[blockId].First()].Kind != EdgeKind.HighestScore)
+                    {
+                        // Skip indentation for non linear nodes with the default setting.
+                        // TODO: Check how that breaks join with @order? Does it actually break?
+                        // no-op.
+                    }
+                    else
+                    {
+                        joinLevel++;
+                    }
                 }
-                else if (!Blocks[block].Conditional)
+                else if (!block.Conditional && block.PlayUntil == -1)
                 {
                     joinLevel++;
                 }
