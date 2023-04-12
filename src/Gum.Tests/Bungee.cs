@@ -633,7 +633,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(0, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 1, 4, 5, 11 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 1, 4, 11 }, target.Blocks);
 
             target = situation.Edges[1];
 
@@ -962,7 +962,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(0, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 1, 2, 3, 6, 7, 8 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 1, 2, 3, 6, 8 }, target.Blocks);
 
             target = situation.Edges[1];
 
@@ -981,6 +981,81 @@ namespace Gum.Tests
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(4, target.Owner);
             CollectionAssert.AreEqual(new int[] { 6 }, target.Blocks);
+        }
+
+        [TestMethod]
+        public void TestNestedCondition6()
+        {
+            const string situationText = @"
+=Encounter
+    @1  (Defeated)
+            Okay. I am here now.
+            Right?
+
+            [c:DoSomething]
+        
+        (...)
+            Oh my. Congratulations.
+
+            (WonInThePast)
+                I don't care though.
+            (...)
+                I am super jealous.
+
+            I hope you like the taste of victory.
+    
+    -> Random
+
+=Random";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1, 7 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.IfElse, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2, 3 }, target.Blocks);
+
+            target = situation.Edges[2];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(2, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 7 }, target.Blocks);
+
+            target = situation.Edges[3];
+
+            Assert.AreEqual(EdgeKind.IfElse, target.Kind);
+            Assert.AreEqual(3, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 4, 5 }, target.Blocks);
+
+            target = situation.Edges[4];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(4, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 6 }, target.Blocks);
+
+            target = situation.Edges[5];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(5, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 6 }, target.Blocks);
+
+            target = situation.Edges[6];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(6, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 7 }, target.Blocks);
+
         }
     }
 }

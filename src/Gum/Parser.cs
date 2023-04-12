@@ -425,6 +425,9 @@ namespace Gum
                                 }
 
                                 _currentBlock = result.Id;
+
+                                // Ignore any other join or nested operations, since the block has been dealed with.
+                                joinLevel = 0;
                             }
                         }
                         else

@@ -22,7 +22,7 @@ namespace Gum
 
         private void AddLineToBlock(ReadOnlySpan<char> line)
         {
-            (string speaker, string? portrait) = ReadSpeakerAndLine(line, out int end);
+            (string? speaker, string? portrait) = ReadSpeakerAndLine(line, out int end);
             if (end != -1)
             {
                 line = line.Slice(end + 1);
@@ -40,9 +40,9 @@ namespace Gum
         ///     {speaker}: {line}
         ///     {line}
         /// </summary>
-        private (string Speaker, string? Portrait) ReadSpeakerAndLine(ReadOnlySpan<char> line, out int end)
+        private (string? Speaker, string? Portrait) ReadSpeakerAndLine(ReadOnlySpan<char> line, out int end)
         {
-            string speaker = Line.OWNER;
+            string? speaker = null;
             string? portrait = null;
 
             end = -1;

@@ -367,10 +367,23 @@ namespace Gum.InnerThoughts
 
             if (leafBlocks.Count != 0)
             {
-                foreach (int i in leafBlocks)
+                for (int index = 0; index < leafBlocks.Count; ++index)
                 {
-                    int conditionalParent = GetConditionalBlock(i);
+                    int b = leafBlocks[index];
+
+                    int conditionalParent = GetConditionalBlock(b);
                     if (conditionalParent == -1 || conditionalParent == topParent)
+                    {
+                        addToParent = false;
+                    }
+
+                    // If the last block doesn't have any condition *but* this is actually an 
+                    // if else block.
+                    // I *think* this doesn't take into account child of child blocks, but it's not
+                    // the end of the world if we have an extra edge that will never be reached.
+                    // I guess we could also just have pruned it?
+                    if (Blocks[b].Requirements.Count == 0 &&
+                        Edges[topParent].Kind == EdgeKind.IfElse && Edges[topParent].Blocks.Contains(b))
                     {
                         addToParent = false;
                     }
