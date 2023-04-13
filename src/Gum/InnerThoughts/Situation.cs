@@ -303,7 +303,7 @@ namespace Gum.InnerThoughts
         /// Find all leaf nodes eligible to be joined.
         /// This will disregard nodes that are already dead (due to a goto!).
         /// </summary>
-        private void FindAllLeaves(int block, ref List<int> result)
+        private void FindAllLeaves(int block, ref HashSet<int> result)
         {
             Edge edge = Edges[block];
             if (edge.Blocks.Count != 0)
@@ -367,7 +367,7 @@ namespace Gum.InnerThoughts
             topParent = _lastBlocks.Peek();
 
             int[] blocksToLookForLeaves = Edges[topParent].Blocks.ToArray();
-            List<int> leafBlocks = new();
+            HashSet<int> leafBlocks = new();
 
             // Now, for each of those blocks, we'll collect all of its leaves and add edges to it.
             foreach (int blockToJoin in blocksToLookForLeaves)
@@ -375,39 +375,54 @@ namespace Gum.InnerThoughts
                 FindAllLeaves(blockToJoin, ref leafBlocks);
             }
 
-            bool addToParent = true;
+            leafBlocks.Add(topParent);
 
             if (leafBlocks.Count != 0)
             {
-                for (int index = 0; index < leafBlocks.Count; ++index)
+                HashSet<int> prunnedLeafBlocks = leafBlocks.ToHashSet();
+                foreach (int b in prunnedLeafBlocks)
                 {
-                    int b = leafBlocks[index];
-
-                    int conditionalParent = GetConditionalBlock(b);
-                    if (conditionalParent == -1 || conditionalParent == topParent)
+                    if (b != topParent)
                     {
-                        addToParent = false;
+                        // Whether this block will always be played or is it tied to a condition.
+                        // If this is tied to the root directly, returns -1.
+                        int conditionalParent = GetConditionalBlock(b);
+                        if (conditionalParent == -1 || conditionalParent == topParent)
+                        {
+                            prunnedLeafBlocks.Remove(topParent);
+                        }
                     }
 
                     // If the last block doesn't have any condition *but* this is actually an 
                     // if else block.
                     // I *think* this doesn't take into account child of child blocks, but it's not
                     // the end of the world if we have an extra edge that will never be reached.
-                    // I guess we could also just have pruned it?
-                    if (Blocks[b].Requirements.Count == 0 &&
-                        Edges[topParent].Kind == EdgeKind.IfElse && Edges[topParent].Blocks.Contains(b))
+                    switch (Edges[b].Kind)
                     {
-                        addToParent = false;
+                        case EdgeKind.IfElse:
+                            if (Edges[b].Blocks.LastOrDefault() is int lastBlockId)
+                            {
+                                if (Blocks[lastBlockId].Requirements.Count == 0 && 
+                                    prunnedLeafBlocks.Contains(lastBlockId))
+                                {
+                                    prunnedLeafBlocks.Remove(b);
+                                }
+                            }
+
+                            break;
+
+                        case EdgeKind.HighestScore:
+                        case EdgeKind.Choice:
+                        case EdgeKind.Random:
+                            prunnedLeafBlocks.Remove(b);
+                            break;
                     }
                 }
+
+                leafBlocks = prunnedLeafBlocks;
             }
 
-            if (addToParent)
-            {
-                leafBlocks.Add(topParent);
-            }
-
-            return (topParent, leafBlocks.Distinct().ToArray());
+            return (topParent, leafBlocks.ToArray());
         }
 
         private int GetConditionalBlock(int block)

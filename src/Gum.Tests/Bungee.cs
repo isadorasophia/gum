@@ -1131,7 +1131,6 @@ namespace Gum.Tests
             CollectionAssert.AreEqual(new int[] { 11 }, target.Blocks);
         }
 
-
         [TestMethod]
         public void TestNestedCondition8()
         {
@@ -1139,8 +1138,8 @@ namespace Gum.Tests
 =Encounter
     (!Meet and !Greet) 
         @order
-            - I will go now.
-            + Hello!?
+            -   I will go now.
+            +   Hello!?
 
         -> exit!";
 
