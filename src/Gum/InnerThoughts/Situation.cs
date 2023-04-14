@@ -121,8 +121,9 @@ namespace Gum.InnerThoughts
                 parentId = _lastBlocks.Peek();
                 blocksToBeJoined = new int[] { parentId };
             }
-
-            if (kind == EdgeKind.IfElse)
+            
+            // Do not make a join on the leaves if this is an (...) or another choice (-/+)
+            if (kind == EdgeKind.IfElse || (!lastEdge.Kind.IsSequential() && !kind.IsSequential()))
             {
                 blocksToBeJoined = new int[] { parentId };
             }
@@ -284,9 +285,14 @@ namespace Gum.InnerThoughts
         {
             Block lastBlock = Blocks[parentId];
 
-            // This is copied and pasted from above. We will refactor this.
+            // Block the last block, this will be the block that we just added (blockId).
             _ = _lastBlocks.TryPop(out _);
-            _ = _lastBlocks.TryPop(out _);
+
+            // If this block corresponds to the parent, remove it from the stack.
+            if (_lastBlocks.TryPeek(out int peek) && peek == parentId)
+            {
+                _ = _lastBlocks.Pop();
+            }
 
             Block empty = CreateBlock(playUntil: lastBlock.PlayUntil, track: true);
             ReplaceEdgesToNodeWith(parentId, empty.Id);
@@ -336,7 +342,6 @@ namespace Gum.InnerThoughts
             while (_lastBlocks.Count > 1 && joinLevel-- > 0)
             {
                 int blockId = _lastBlocks.Pop();
-
                 Block block = Blocks[blockId];
 
                 // When I said I would allow one (1) hacky code, I lied.

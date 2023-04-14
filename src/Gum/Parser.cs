@@ -241,7 +241,7 @@ namespace Gum
         /// Read the next line, without any comments.
         /// </summary>
         /// <returns>Whether it was successful and no error occurred.</returns>
-        private bool ProcessLine(ReadOnlySpan<char> line, int index, int column, int depth = 0, int joinLevel = 0, bool hasCreatedJoinBlock = false)
+        private bool ProcessLine(ReadOnlySpan<char> line, int index, int column, int depth = 0, int joinLevel = 0, bool hasCreatedBlock = false)
         {
             if (line.IsEmpty) return true;
 
@@ -268,10 +268,10 @@ namespace Gum
                     {
                         createJoinBlock = false;
                     }
-                    else if (Defines(line, new TokenChar[] { 
+                    else if (Defines(line, new TokenChar[] {
                         TokenChar.Situation,
                         TokenChar.ChoiceBlock,
-                        TokenChar.MultipleBlock, 
+                        TokenChar.MultipleBlock,
                         TokenChar.OnceBlock }))
                     {
                         if (line.Length > 1 && line[1] == (char)TokenChar.ChoiceBlock)
@@ -283,10 +283,11 @@ namespace Gum
                             _script.CurrentSituation.PopLastBlock();
 
                             // We might need to do this check out of this switch case?
-                            if (_script.CurrentSituation.PeekLastBlock().IsChoice && 
+                            if (_script.CurrentSituation.PeekLastBlock().IsChoice &&
                                 _script.CurrentSituation.PeekLastEdgeKind() != EdgeKind.Choice)
                             {
                                 _script.CurrentSituation.PopLastBlock();
+                                joinLevel = 0;
                             }
 
                             createJoinBlock = false;
@@ -304,8 +305,7 @@ namespace Gum
                         }
 
                         _currentBlock = result.Id;
-                        hasCreatedJoinBlock = true;
-
+                        hasCreatedBlock = true;
                     }
                 }
                 else if (_indentationIndex > _lastIndentationIndex)
@@ -313,6 +313,22 @@ namespace Gum
                     // May be used if we end up creating a new block.
                     // (first indent obviously won't count)
                     isNestedBlock = _indentationIndex != 1;
+
+                    // Since the last block was a choice, we will need to create another block to continue it.
+                    if (_script.CurrentSituation.PeekLastBlock().IsChoice)
+                    {
+                        Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel: 0, isNested: true);
+                        if (result is null)
+                        {
+                            OutputHelpers.WriteError($"Unable to nest line {index}. Was the indentation correct?");
+                            return false;
+                        }
+
+                        _currentBlock = result.Id;
+                        isNestedBlock = false;
+
+                        hasCreatedBlock = true;
+                    }
                 }
                 
                 if (Defines(line, TokenChar.ChoiceBlock, $"{(char)TokenChar.ChoiceBlock}"))
@@ -382,7 +398,7 @@ namespace Gum
                         // ...that's all!
                         if (command.StartsWith("random"))
                         {
-                            if (hasCreatedJoinBlock)
+                            if (hasCreatedBlock)
                             {
                                 _ = _script.CurrentSituation.SwitchRelationshipTo(EdgeKind.Random);
                             }
@@ -397,7 +413,7 @@ namespace Gum
                         }
                         else if (TryReadInteger(command) is int number)
                         {
-                            if (hasCreatedJoinBlock)
+                            if (hasCreatedBlock)
                             {
                                 _ = Block.PlayUntil = number;
                             }
@@ -451,7 +467,7 @@ namespace Gum
 
                     // (
                     case TokenChar.BeginCondition:
-                        if (!hasCreatedJoinBlock)
+                        if (!hasCreatedBlock)
                         {
                             int playUntil = ConsumePlayUntil();
 
@@ -472,7 +488,6 @@ namespace Gum
                             _currentBlock = result.Id;
                         }
 
-                        Block.Conditional = true;
                         return ParseConditions(line, index, column);
 
                     // [
@@ -505,16 +520,16 @@ namespace Gum
                         }
 
                         _playUntil = 1;
-                        return ParseOption(line, index, column, joinLevel: 0, isNestedBlock);
+                        return ParseOption(line, index, column, joinLevel, isNestedBlock);
 
                     // +
                     case TokenChar.MultipleBlock:
                         _playUntil = -1;
-                        return ParseOption(line, index, column, joinLevel: 0, isNestedBlock);
+                        return ParseOption(line, index, column, joinLevel, isNestedBlock);
 
                     // >
                     case TokenChar.ChoiceBlock:
-                        return ParseChoice(line, index, column, joinLevel: 0, isNestedBlock);
+                        return ParseChoice(line, index, column, joinLevel, isNestedBlock);
 
                     default:
                         return true;
@@ -527,7 +542,7 @@ namespace Gum
 
             if (!line.IsEmpty)
             {
-                return ProcessLine(line, index, column, depth + 1, joinLevel, hasCreatedJoinBlock);
+                return ProcessLine(line, index, column, depth + 1, joinLevel, hasCreatedBlock);
             }
 
             return true;
@@ -628,6 +643,15 @@ namespace Gum
 
             if (line[0] == (char)TokenChar.BeginCondition)
             {
+                result = _script.CurrentSituation.AddBlock(playUntil: -1, joinLevel: 0, isNested: false, EdgeKind.Next);
+                if (result is null)
+                {
+                    OutputHelpers.WriteError($"Unable to create condition on choice in line {lineIndex}.");
+                    return false;
+                }
+
+                _currentBlock = result.Id;
+
                 return ParseConditions(line.Slice(1), lineIndex, columnIndex + 1);
             }
             else if (line[0] == (char)TokenChar.ChoiceBlock)
@@ -721,8 +745,7 @@ namespace Gum
                 return false;
             }
 
-            // Create the condition block.
-
+            Block.Conditional = true;
             line = line.Slice(0, endColumn).TrimEnd();
 
             while (true)
