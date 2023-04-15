@@ -103,7 +103,7 @@ namespace Gum.InnerThoughts
             (int parentId, int[] blocksToBeJoined) = FetchParentOfJoinedBlock(joinLevel);
 
             Edge lastEdge = Edges[parentId];
-            if (!kind.IsSequential() && Blocks[lastEdge.Owner].NonLinearNode)
+            if (!kind.IsSequential() && Blocks[parentId].NonLinearNode)
             {
                 // This is the only "HACKY" thing I will allow here.
                 // Since I want to avoid a syntax such as:
@@ -336,6 +336,7 @@ namespace Gum.InnerThoughts
             if (joinLevel == 0)
             {
                 topParent = _lastBlocks.Peek();
+
                 return (topParent, new int[] { topParent });
             }
 
@@ -351,8 +352,14 @@ namespace Gum.InnerThoughts
                 // manually cleaning up the stack when there is NOT a conditional block on join.
                 // This is also true for @[0-9] blocks, since those add an extra indentation.
                 if (block.NonLinearNode)
-                { 
-                    if (Edges[ParentOf[blockId].First()].Kind != EdgeKind.HighestScore)
+                {
+                    if (block.Conditional)
+                    {
+                        // Nevermind the last pop: this is actually not an indent at all, as the last
+                        // block was actually a condition (and we have a minus one indent).
+                        _lastBlocks.Push(blockId);
+                    }
+                    else if (Edges[ParentOf[blockId].First()].Kind != EdgeKind.HighestScore)
                     {
                         // Skip indentation for non linear nodes with the default setting.
                         // TODO: Check how that breaks join with @order? Does it actually break?

@@ -195,17 +195,17 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.HighestScore, target.Kind);
             Assert.AreEqual(target.Owner, 0);
-            CollectionAssert.AreEqual(new int[] { 1, 3, 5 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 1, 2, 3 }, target.Blocks);
 
-            Block block = situation.Blocks[2];
+            Block block = situation.Blocks[1];
             Assert.AreEqual(1, block.Requirements.Count);
             Assert.AreEqual(1, block.Lines.Count);
 
-            block = situation.Blocks[4];
+            block = situation.Blocks[2];
             Assert.AreEqual(1, block.Requirements.Count);
             Assert.AreEqual(1, block.Lines.Count);
 
-            block = situation.Blocks[6];
+            block = situation.Blocks[3];
             Assert.AreEqual(2, block.Requirements.Count);
             Assert.AreEqual(1, block.Lines.Count);
         }
@@ -602,7 +602,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.HighestScore, target.Kind);
             Assert.AreEqual(0, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 1, 3, 5 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 1, 2, 3 }, target.Blocks);
         }
 
         [TestMethod]
@@ -1241,19 +1241,19 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.HighestScore, target.Kind);
             Assert.AreEqual(0, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 1, 2, 7 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 1, 2, 5 }, target.Blocks);
 
             target = situation.Edges[1];
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(1, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 8 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 6 }, target.Blocks);
 
             target = situation.Edges[2];
 
-            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(EdgeKind.IfElse, target.Kind);
             Assert.AreEqual(2, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 3, 6 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 3, 4 }, target.Blocks);
 
             target = situation.Edges[3];
 
@@ -1265,25 +1265,13 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(4, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 8 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 6 }, target.Blocks);
 
             target = situation.Edges[5];
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(5, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 8 }, target.Blocks);
-
-            target = situation.Edges[6];
-
-            Assert.AreEqual(EdgeKind.IfElse, target.Kind);
-            Assert.AreEqual(6, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 4, 5 }, target.Blocks);
-
-            target = situation.Edges[7];
-
-            Assert.AreEqual(EdgeKind.Next, target.Kind);
-            Assert.AreEqual(7, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 8 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 6 }, target.Blocks);
         }
     }
 }

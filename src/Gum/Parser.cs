@@ -643,15 +643,9 @@ namespace Gum
 
             if (line[0] == (char)TokenChar.BeginCondition)
             {
-                result = _script.CurrentSituation.AddBlock(playUntil: -1, joinLevel: 0, isNested: false, EdgeKind.Next);
-                if (result is null)
-                {
-                    OutputHelpers.WriteError($"Unable to create condition on choice in line {lineIndex}.");
-                    return false;
-                }
-
-                _currentBlock = result.Id;
-
+                // Do not create a new block for conditions. This is because an option is deeply tied
+                // to its rules (it's their score, after all!) so we can't just get away with that.
+                // We might do another syntax if we want to create a new block for some reason.
                 return ParseConditions(line.Slice(1), lineIndex, columnIndex + 1);
             }
             else if (line[0] == (char)TokenChar.ChoiceBlock)
