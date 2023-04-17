@@ -99,6 +99,18 @@ namespace Gum.InnerThoughts
         /// </summary>
         public Block? AddBlock(int playUntil, int joinLevel, bool isNested, EdgeKind kind = EdgeKind.Next)
         {
+            Block lastBlock = PeekLastBlock();
+            if (joinLevel == 0 && playUntil == 1 && lastBlock.PlayUntil == 1 && !lastBlock.NonLinearNode)
+            {
+                // Consider this:
+                //     @1  -> Go
+                //
+                //     @1  Some other dialog with the same indentation.
+                //         -> exit!
+                // We need to "fake" another join level here to make up for our lack of indentation.
+                joinLevel += 1;
+            }
+
             // We need to know the "parent" node when nesting blocks (make the parent -> point to the new block).
             (int parentId, int[] blocksToBeJoined) = FetchParentOfJoinedBlock(joinLevel);
 
