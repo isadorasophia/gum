@@ -60,6 +60,13 @@ namespace Gum
         /// Keep tack of the latest index of each line.
         /// </summary>
         private int _lastIndentationIndex = 0;
+
+        /// <summary>
+        /// If applicable, tracks the first token of the last line.
+        /// This is used to tweak our own indentation rules.
+        /// </summary>
+        private TokenChar? _lastLineToken = null;
+
         private int _indentationIndex = 0;
 
         /// <summary>
@@ -150,6 +157,16 @@ namespace Gum
                 if (!ProcessLine(lineNoIndent, index, column))
                 {
                     return null;
+                }
+
+                // Track whatever was the last token used.
+                if (Enum.IsDefined(typeof(TokenChar), (int)lineNoIndent[0]))
+                {
+                    _lastLineToken = (TokenChar)lineNoIndent[0];
+                }
+                else
+                {
+                    _lastLineToken = null;
                 }
 
                 if (_script.HasCurrentSituation is false)
@@ -263,6 +280,27 @@ namespace Gum
                 {
                     joinLevel = _lastIndentationIndex - _indentationIndex;
                     bool createJoinBlock = true;
+
+                    // If the last line was actually a flow (@) and this is a join,
+                    // we'll likely disregard the last join.
+                    //
+                    //  @1  Hi!
+                    //      Bye.
+                    //
+                    //  Join. <- this will apply a join.
+                    //
+                    //  @1  Hi!
+                    //  Bye. <- this will apply a join.
+                    //
+                    //  (something)
+                    //      @1  Hi!
+                    //
+                    //  Bye. <- this will apply a join on (something).
+                    if (_lastLineToken == TokenChar.Flow && 
+                        _script.CurrentSituation.PeekLastBlockParent().Conditional)
+                    {
+                        joinLevel += 1;
+                    }
 
                     if (Defines(line, TokenChar.BeginCondition))
                     {

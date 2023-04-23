@@ -1088,8 +1088,7 @@ namespace Gum.Tests
             const string situationText = @"
 =Encounter
     (Meet and PreviouslySaidBye)
-        @1
-            Hi! But only once.
+        @1  Hi! But only once.
 
             -> exit!
 
@@ -1098,8 +1097,7 @@ namespace Gum.Tests
 
     (...!StillHasJob)
         (ChocolateAmount == 0)
-            @1  
-                Out of chocolates?
+            @1  Out of chocolates?
                 Again...?
 
         (...ChocolateAmount >= 1)
@@ -1347,5 +1345,185 @@ namespace Gum.Tests
             Assert.AreEqual(9, target.Owner);
             CollectionAssert.AreEqual(new int[] { 10 }, target.Blocks);
         }
+
+        [TestMethod]
+        public void TestConditionWithOneJoin()
+        {
+            const string situationText = @"
+=Encounter
+    (Something)
+        @1  Hello!
+
+    (...Something2)
+        @1  Hello once?
+
+    Bye!
+
+=ChooseName";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Assert.AreEqual(6, situation.Root);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.IfElse, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1, 3 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2 }, target.Blocks);
+
+            Assert.AreEqual(1, situation.Blocks[2].PlayUntil); // @1
+
+            target = situation.Edges[2];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(2, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 5 }, target.Blocks);
+
+            target = situation.Edges[3];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(3, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
+
+            Assert.AreEqual(1, situation.Blocks[4].PlayUntil); // @1
+
+            target = situation.Edges[4];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(4, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 5 }, target.Blocks);
+
+            target = situation.Edges[6];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(6, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 0, 5 }, target.Blocks);
+        }
+
+        [TestMethod]
+        public void TestConditionWithTwoLinesJoin()
+        {
+            const string situationText = @"
+=Encounter
+    (Something)
+        @1  Hello!
+            ok...
+
+    (...Something2)
+        @1  Hello once?
+
+    Bye!
+
+=ChooseName";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Assert.AreEqual(6, situation.Root);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.IfElse, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1, 3 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2 }, target.Blocks);
+
+            Assert.AreEqual(1, situation.Blocks[2].PlayUntil); // @1
+
+            target = situation.Edges[2];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(2, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 5 }, target.Blocks);
+
+            target = situation.Edges[3];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(3, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
+
+            Assert.AreEqual(1, situation.Blocks[4].PlayUntil); // @1
+
+            target = situation.Edges[4];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(4, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 5 }, target.Blocks);
+
+            target = situation.Edges[6];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(6, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 0, 5 }, target.Blocks);
+        }
+
+        [TestMethod]
+        public void TestConditionWithOneIfElseJoin()
+        {
+            const string situationText = @"
+=Encounter
+    @1  (Something)
+            Hello!
+
+        (...Something2)
+            Hello once?
+
+    Bye!
+
+=ChooseName";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Assert.AreEqual(0, situation.Root);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1, 4 }, target.Blocks);
+
+            Assert.AreEqual(1, situation.Blocks[1].PlayUntil); // @1
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.IfElse, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2, 3 }, target.Blocks);
+
+            target = situation.Edges[2];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(2, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
+
+            target = situation.Edges[3];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(3, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
+        }
+
     }
 }

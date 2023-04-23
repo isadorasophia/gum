@@ -94,6 +94,8 @@ namespace Gum.InnerThoughts
 
         internal Block PeekLastBlock() => Blocks[_lastBlocks.Peek()];
 
+        internal Block PeekLastBlockParent() => Blocks[_lastBlocks.ElementAt(1)];
+
         /// <summary>
         /// Creates a new block subjected to a <paramref name="kind"/> relationship.
         /// </summary>
@@ -382,9 +384,17 @@ namespace Gum.InnerThoughts
                         joinLevel++;
                     }
                 }
-                else if (!block.Conditional && block.PlayUntil == -1)
+                else if (!block.Conditional)
                 {
-                    joinLevel++;
+                    // [parent]
+                    //  @1  Conditional
+                    //      Line
+                    //
+                    //  And the other block.
+                    if (block.PlayUntil == -1)
+                    {
+                        joinLevel++;
+                    }
                 }
             }
 
