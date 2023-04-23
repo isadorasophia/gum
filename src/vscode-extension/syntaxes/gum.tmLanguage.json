@@ -77,6 +77,11 @@
 					"begin": "(?=\\->)",
 					"end": "(?=$)",
 					"name": "entity.other.inherited-class.gum"
+				},
+				{
+					"begin": "<c=([^>]+)>",
+					"end": "</c>",
+					"name": "constant.numeric.arrow.color.gum"
 				}
 			]
 		},

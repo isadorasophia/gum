@@ -114,7 +114,7 @@ namespace Gum.InnerThoughts
             }
 
             // We need to know the "parent" node when nesting blocks (make the parent -> point to the new block).
-            (int parentId, int[] blocksToBeJoined) = FetchParentOfJoinedBlock(joinLevel);
+            (int parentId, int[] blocksToBeJoined) = FetchParentOfJoinedBlock(joinLevel, createBlockForElse: kind != EdgeKind.IfElse);
 
             Edge lastEdge = Edges[parentId];
             if (!kind.IsSequential() && Blocks[parentId].NonLinearNode)
@@ -155,10 +155,25 @@ namespace Gum.InnerThoughts
 
             if (isNested)
             {
-                edge = Edges[parentId];
-                edge.Kind = kind;
+                Edge? parentEdge = Edges[parentId];
 
-                AddNode(edge, block.Id);
+                if (block.IsChoice)
+                {
+                    parentEdge.Kind = EdgeKind.Next;
+
+                    //  (Condition)
+                    //      >> Nested title
+                    //      > Option a
+                    //      > Option b
+                    edge.Kind = kind;
+                }
+                else
+                {
+                    parentEdge.Kind = kind;
+                }
+
+                AddNode(parentEdge, block.Id);
+
                 return block;
             }
 
@@ -323,14 +338,53 @@ namespace Gum.InnerThoughts
         /// Find all leaf nodes eligible to be joined.
         /// This will disregard nodes that are already dead (due to a goto!).
         /// </summary>
-        private void FindAllLeaves(int block, ref HashSet<int> result)
+        private void GetAllLeaves(int block, bool createBlockForElse, ref HashSet<int> result)
         {
             Edge edge = Edges[block];
             if (edge.Blocks.Count != 0)
             {
                 foreach (int otherBlock in edge.Blocks)
                 {
-                    FindAllLeaves(otherBlock, ref result);
+                    GetAllLeaves(otherBlock, createBlockForElse, ref result);
+                }
+
+                if (createBlockForElse)
+                {
+                    //  @1  (Something)
+                    //          Hello!
+                    //
+                    //      (...Something2)
+                    //          Hello once?
+                    //  Bye.
+                    //
+                    // turns into:
+                    //  @1  (Something)
+                    //          Hello!
+                    //
+                    //      (...Something2)
+                    //          Hello once?
+                    //
+                    //      (...)
+                    //          // go down.
+                    //
+                    //  Bye.
+                    // If this an else if, but may not enter any of the blocks,
+                    // do a last else to the next block.
+                    if (edge.Kind == EdgeKind.IfElse &&
+                        Blocks[edge.Blocks.Last()].Requirements.Count != 0)
+                    {
+                        // Create else block and its edge.
+                        int elseBlockId = CreateBlock(-1, track: false).Id;
+
+                        Edge? elseBlockEdge = CreateEdge(EdgeKind.Next);
+                        AssignOwnerToEdge(elseBlockId, elseBlockEdge);
+
+                        // Assign the block as part of the .IfElse edge.
+                        AddNode(edge, elseBlockId);
+
+                        // Track the block as a leaf.
+                        result.Add(elseBlockId);
+                    }
                 }
             }
             else
@@ -343,7 +397,7 @@ namespace Gum.InnerThoughts
             }
         }
 
-        private (int Parent, int[] blocksToBeJoined) FetchParentOfJoinedBlock(int joinLevel)
+        private (int Parent, int[] blocksToBeJoined) FetchParentOfJoinedBlock(int joinLevel, bool createBlockForElse)
         {
             int topParent;
 
@@ -406,7 +460,7 @@ namespace Gum.InnerThoughts
             // Now, for each of those blocks, we'll collect all of its leaves and add edges to it.
             foreach (int blockToJoin in blocksToLookForLeaves)
             {
-                FindAllLeaves(blockToJoin, ref leafBlocks);
+                GetAllLeaves(blockToJoin, createBlockForElse, ref leafBlocks);
             }
 
             leafBlocks.Add(topParent);

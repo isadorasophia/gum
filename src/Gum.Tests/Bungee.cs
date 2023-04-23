@@ -1502,7 +1502,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(0, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 1, 4 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 1, 5 }, target.Blocks);
 
             Assert.AreEqual(1, situation.Blocks[1].PlayUntil); // @1
 
@@ -1510,20 +1510,78 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.IfElse, target.Kind);
             Assert.AreEqual(1, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 2, 3 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 2, 3, 4 }, target.Blocks);
 
             target = situation.Edges[2];
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(2, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 5 }, target.Blocks);
+
+            target = situation.Edges[3];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(3, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 5 }, target.Blocks);
+
+            target = situation.Edges[4];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(4, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 5 }, target.Blocks);
+        }
+
+        [TestMethod]
+        public void TestConditionWithQuestion()
+        {
+            const string situationText = @"
+=Encounter
+    (TriedPickName > 3)
+        >> Do you really think a name will stop you from running away?
+        > Yes.
+            -> ChooseName
+        > No.
+            -> Encounter
+
+=ChooseName";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Assert.AreEqual(0, situation.Root);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2 }, target.Blocks);
+
+            target = situation.Edges[2];
+
+            Assert.AreEqual(EdgeKind.Choice, target.Kind);
+            Assert.AreEqual(2, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 3, 5 }, target.Blocks);
 
             target = situation.Edges[3];
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(3, target.Owner);
             CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
-        }
 
+            target = situation.Edges[5];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(5, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 6 }, target.Blocks);
+        }
     }
 }
