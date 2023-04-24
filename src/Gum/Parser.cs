@@ -272,6 +272,21 @@ namespace Gum
             }
             else if (depth == 0 && _script.HasCurrentSituation)
             {
+                // This fixes the lack of indentation of choice dialogs. This is so we can
+                // properly join scenarios such as:
+                //
+                //  >> Something...
+                //  > Or else!
+                //  > No?
+                //
+                //  Okay.
+                bool isChoice = Defines(line, TokenChar.ChoiceBlock);
+                if (_indentationIndex == _lastIndentationIndex &&
+                    _lastLineToken == TokenChar.ChoiceBlock && !isChoice)
+                {
+                    _lastIndentationIndex += 1;
+                }
+
                 // We are on a valid situation, check whether we need to join dialogs.
                 // Indentation changed:
                 //     < from here
@@ -368,8 +383,9 @@ namespace Gum
                         hasCreatedBlock = true;
                     }
                 }
-                
-                if (Defines(line, TokenChar.ChoiceBlock, $"{(char)TokenChar.ChoiceBlock}"))
+
+                bool isChoiceTitle = isChoice && Defines(line, TokenChar.ChoiceBlock, $"{(char)TokenChar.ChoiceBlock}");
+                if (isChoiceTitle)
                 {
                     // If this declares another dialog, e.g.:
                     // >> Option?
@@ -612,7 +628,7 @@ namespace Gum
                 return false;
             }
 
-            if (_script.CurrentSituation.PeekLastEdgeKind() != EdgeKind.Choice && line[0] != (char)TokenChar.ChoiceBlock)
+            if (!_script.CurrentSituation.PeekLastBlock().IsChoice && line[0] != (char)TokenChar.ChoiceBlock)
             {
                 ReadOnlySpan<char> newLine = _currentLine.AsSpan().Slice(0, columnIndex);
 

@@ -117,7 +117,14 @@ namespace Gum.InnerThoughts
             (int parentId, int[] blocksToBeJoined) = FetchParentOfJoinedBlock(joinLevel, createBlockForElse: kind != EdgeKind.IfElse);
 
             Edge lastEdge = Edges[parentId];
-            if (!kind.IsSequential() && Blocks[parentId].NonLinearNode)
+
+            // Looks on whether we need to pop nodes on:
+            //  >> Dialog
+            //  > Choice
+            //  > Choice 2 <- pop here!
+            bool shouldPopChoiceBlock = kind == EdgeKind.Choice && Blocks[parentId].IsChoice && lastEdge.Kind != kind;
+
+            if (shouldPopChoiceBlock || (!kind.IsSequential() && Blocks[parentId].NonLinearNode))
             {
                 // This is the only "HACKY" thing I will allow here.
                 // Since I want to avoid a syntax such as:
