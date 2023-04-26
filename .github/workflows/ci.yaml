@@ -65,7 +65,7 @@ jobs:
         
       - name: Push
         run: |
-          dotnet nuget push ./src/Gum/bin/Release/Gum.*.snupkg --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${GITHUB_TOKEN}
-          dotnet nuget push ./src/Gum/bin/Release/Gum.*.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${GITHUB_TOKEN}
+          dotnet nuget push ./src/Gum/bin/Release/Gum.*.snupkg --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${NUGET_TOKEN}
+          dotnet nuget push ./src/Gum/bin/Release/Gum.*.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${NUGET_TOKEN}
         env:
           NUGET_TOKEN: ${{secrets.NUGET_TOKEN}}
