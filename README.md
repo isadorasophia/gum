@@ -1,6 +1,6 @@
 # 🍬 gum
 
-![Build Status](https://github.com/isadorasophia/gum/actions/workflows/ci.yaml/badge.svg)
+[![Release](https://github.com/isadorasophia/gum/actions/workflows/ci.yaml/badge.svg)](https://github.com/isadorasophia/gum/actions/workflows/ci.yaml)
 [![LICENSE](https://img.shields.io/github/license/isadorasophia/gum.svg)](LICENSE)
 
 gum is a tool that converts narrative scripts into a graph that can be read by C# metadata.

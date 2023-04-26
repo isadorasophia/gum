@@ -30,7 +30,7 @@ jobs:
           dotnet-version: 7.0.202
           source-url: https://nuget.pkg.github.com/murderengine/index.json
         env:
-          NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          NUGET_AUTH_TOKEN: ${{secrets.NUGET_TOKEN}}
       
       - name: Setup NuGet
         uses: NuGet/setup-nuget@v1.0.5
@@ -67,4 +67,4 @@ jobs:
         run: dotnet pack --runtime "${{ matrix.target }}" -c Release
 
       - name: Push
-        run: dotnet nuget push ./src/Gum/bin/Release/Gum.*.nupkg --source https://nuget.pkg.github.com/murderengine/index.json
+        run: dotnet nuget push ./src/Gum/bin/Release/Gum.*.nupkg --source https://nuget.pkg.github.com/murderengine/index.json --skip-duplicate 
