@@ -29,9 +29,6 @@ jobs:
         with:
           dotnet-version: 7.0.202
       
-      - name: Setup NuGet
-        uses: NuGet/setup-nuget@v1.0.5
-    
       - name: Build
         shell: bash
         run: |
@@ -59,12 +56,24 @@ jobs:
           files: "gum-release*"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-      - name: Pack
-        run: dotnet pack --runtime "${{ matrix.target }}" -c Release
-        
-      - name: Push
+
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Install dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 7.0.202
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v1.0.5
+  
+      - name: Pack and push
         run: |
-          dotnet nuget push ./src/Gum/bin/Release/Gum.*.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${NUGET_TOKEN}
+            dotnet pack -c Release
+            dotnet nuget push ./src/Gum/bin/Release/Gum.*.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${NUGET_TOKEN}
         env:
           NUGET_TOKEN: ${{secrets.NUGET_TOKEN}}
