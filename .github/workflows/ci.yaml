@@ -1,11 +1,11 @@
-name: Publish Release
+﻿name: Publish Release
 on:
   release:
     types: [published]
 
 jobs:
   release:
-    name: ?? Release
+    name: 📪 Release
     strategy:
       matrix:
         kind: ['linux', 'windows', 'macOS']
@@ -58,7 +58,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   pack:
-    name: ?? Pack and publish
+    name: 📦 Pack and publish
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
