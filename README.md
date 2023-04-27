@@ -16,12 +16,11 @@ gum is a tool that converts narrative scripts into a graph that can be read by C
 -> goto
 -> exit! stops
 @random picks randomly - and + blocks
-@order order options by rule matching and then order (default)
 @[0-9] which [0-9] is the amount of times this block may be executed
 [] for actions
 c: when referencing components
 i: when referencing icons
-{} for referencing variables
+{variable_name} for referencing variables
 // comments
 >> title for options section
 > option
