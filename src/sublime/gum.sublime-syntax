@@ -1,0 +1,94 @@
+%YAML 1.2
+---
+# To install: copy this into c:\%APPDATA%\Sublime Text\Packages\User\
+# See http://www.sublimetext.com/docs/syntax.html
+name: Gum
+file_extensions: [gum]
+scope: source.gum
+contexts:
+  main:
+    - match: '//'
+      scope: comment.line.gum
+      push:
+        - meta_scope: comment.line.double-slash.gum
+        - match: $\n?
+          pop: true
+
+    - match: '\b(false|true|[0-9])\b'
+      scope: constant.language.gum
+
+    # color
+    - match: '<c=([^>]+)>'
+      scope: constant.numeric.gum
+      push: end_color
+
+    # operators
+    - match: '"\=|<=|>=|<|>|c:|i:"'
+      scope: keyword.operator.gum
+
+    # =something
+    - match: '(?=\=)'
+      scope: entity.name.gum
+      push: end_line
+
+    # [ ]
+    - match: '(?=\[)'
+      scope: storage.type.gum
+      push: end_action
+
+    # { }
+    - match: '(?=\{)'
+      scope: storage.type.gum
+      push: end_variable
+
+    # -> 
+    - match: '(?=\->)' 
+      scope: storage.type.gum
+      push: end_line
+
+    # (something)
+    - match: '(?<=[\t|    ])(?=\()'
+      scope: keyword.control.conditional.if.gum
+      push: end_condition
+
+    # @random
+    - match: '@random'
+      scope: constant.numeric.gum
+
+    # -/+
+    - match: '(?<=[\t|    ])\+|-'
+      scope: constant.numeric.gum
+
+    # @1
+    - match: '\@[0-9]'
+      scope: constant.numeric.gum
+
+    # speaker:
+    - match: '\w+[?=\.]?\w+:'
+      scope: constant.numeric.speaker.gum
+
+  end_line:
+    - meta_scope: keyword.control.gum
+    - match: (?=$)
+      pop: true
+
+  end_action:
+    - meta_content_scope: string.quoted.double.gum
+    - match: (?<=\])
+      pop: true
+
+  end_variable:
+    - meta_scope: string.quoted.double.gum
+    - match: (?<=\})
+      pop: true
+
+  end_condition:
+    - meta_scope: keyword.control.gum
+    - match: (?<=\))
+      pop: true
+
+  end_color:
+    - meta_scope: keyword.control.gum
+    - match: </c>
+      scope: constant.numeric.gum
+      pop: true
