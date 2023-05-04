@@ -333,6 +333,15 @@ namespace Gum
                         }
                         else
                         {
+                            // > Hell yeah!
+                            //     (LookForFire)
+                            //         Yes...?
+                            // > Why would I? <- this needs to pop
+                            if (_script.CurrentSituation.PeekLastBlock().Conditional)
+                            {
+                                joinLevel -= 1;
+                            }
+
                             _script.CurrentSituation.PopLastBlock();
 
                             // We might need to do this check out of this switch case?
@@ -340,7 +349,7 @@ namespace Gum
                                 _script.CurrentSituation.PeekLastEdgeKind() != EdgeKind.Choice)
                             {
                                 _script.CurrentSituation.PopLastBlock();
-                                joinLevel = 0;
+                                joinLevel -= 1;
                             }
 
                             createJoinBlock = false;
@@ -368,7 +377,8 @@ namespace Gum
                     isNestedBlock = _indentationIndex != 1;
 
                     // Since the last block was a choice, we will need to create another block to continue it.
-                    if (_script.CurrentSituation.PeekLastBlock().IsChoice)
+                    // AS LONG AS the next block is not another choice!
+                    if (_script.CurrentSituation.PeekLastBlock().IsChoice && !(line.Length > 1 && line[1] == (char)TokenChar.ChoiceBlock))
                     {
                         Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel: 0, isNested: true);
                         if (result is null)
@@ -385,7 +395,7 @@ namespace Gum
                 }
 
                 bool isChoiceTitle = isChoice && Defines(line, TokenChar.ChoiceBlock, $"{(char)TokenChar.ChoiceBlock}");
-                if (isChoiceTitle)
+                if (isChoiceTitle && !isNestedBlock)
                 {
                     // If this declares another dialog, e.g.:
                     // >> Option?
