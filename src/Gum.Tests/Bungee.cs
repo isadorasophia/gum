@@ -1836,6 +1836,47 @@ namespace Gum.Tests
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(8, target.Owner);
             CollectionAssert.AreEqual(new int[] { 9 }, target.Blocks);
+        }
+
+        [TestMethod]
+        public void TestOrderAfterIf()
+        {
+            const string situationText = @"
+=Sold
+    (AmountSold > 0)
+        Here is a total of {AmountSold}C.
+        [AmountSold = 0]
+
+    + Have a wonderful day!
+    + Bye, bye!
+    + I hope you had fun!
+    + See you around!
+    + Thanks for passing by!
+";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2 }, target.Blocks);
+
+            target = situation.Edges[2];
+
+            Assert.AreEqual(EdgeKind.HighestScore, target.Kind);
+            Assert.AreEqual(2, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 3, 4, 5, 6, 7 }, target.Blocks);
 
         }
     }

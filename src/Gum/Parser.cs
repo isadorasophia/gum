@@ -340,19 +340,34 @@ namespace Gum
                             if (_script.CurrentSituation.PeekLastBlock().Conditional)
                             {
                                 joinLevel -= 1;
+
+                                // This is a bit awkward, but I added this in cases which:
+                                //  -   Option a
+                                //      (Something) < parent of this is non linear, so extra pop is needed
+                                //          Hello
+                                //  -   Option b
+                                if (_script.CurrentSituation.PeekLastBlockParent().NonLinearNode)
+                                {
+                                    _script.CurrentSituation.PopLastBlock();
+                                    createJoinBlock = false;
+                                }
                             }
 
-                            _script.CurrentSituation.PopLastBlock();
-
-                            // We might need to do this check out of this switch case?
-                            if (_script.CurrentSituation.PeekLastBlock().IsChoice &&
-                                _script.CurrentSituation.PeekLastEdgeKind() != EdgeKind.Choice)
+                            if (line[0] != (char)TokenChar.MultipleBlock && 
+                                line[0] != (char)TokenChar.OnceBlock)
                             {
                                 _script.CurrentSituation.PopLastBlock();
-                                joinLevel -= 1;
-                            }
 
-                            createJoinBlock = false;
+                                // We might need to do this check out of this switch case?
+                                if (_script.CurrentSituation.PeekLastBlock().IsChoice &&
+                                    _script.CurrentSituation.PeekLastEdgeKind() != EdgeKind.Choice)
+                                {
+                                    _script.CurrentSituation.PopLastBlock();
+                                    joinLevel -= 1;
+                                }
+
+                                createJoinBlock = false;
+                            }
                         }
                     }
 
