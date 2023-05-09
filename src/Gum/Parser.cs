@@ -682,7 +682,7 @@ namespace Gum
         private bool ParseOption(ReadOnlySpan<char> line, int lineIndex, int columnIndex, int joinLevel, bool nested)
         {
             EdgeKind relationshipKind = EdgeKind.HighestScore;
-            if (ConsumeIsRandom())
+            if (ConsumeIsRandom() || _script.CurrentSituation.PeekLastEdgeKind() == EdgeKind.Random)
             {
                 relationshipKind = EdgeKind.Random;
             }
@@ -701,7 +701,7 @@ namespace Gum
             line = line.TrimStart();
             if (line.IsEmpty)
             {
-                OutputHelpers.WriteWarning($"Skipping first empty dialog option in line {lineIndex}.");
+                // OutputHelpers.WriteWarning($"Skipping first empty dialog option in line {lineIndex}.");
                 return true;
             }
 

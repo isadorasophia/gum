@@ -59,8 +59,6 @@ namespace Gum.InnerThoughts
             }
 
             int length = lastEdge.Blocks.Count;
-            Debug.Assert(length != 0, "We expect that the last block added will be the block subjected to the " +
-                "relationship switch.");
 
             switch (kind)
             {

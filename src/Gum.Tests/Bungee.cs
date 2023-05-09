@@ -1761,7 +1761,6 @@ namespace Gum.Tests
             CollectionAssert.AreEqual(new int[] { 7 }, target.Blocks);
         }
 
-
         [TestMethod]
         public void TestNestedChoice2()
         {
