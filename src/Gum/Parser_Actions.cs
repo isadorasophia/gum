@@ -182,6 +182,7 @@ namespace Gum
             DialogAction action = new(fact, actionKind.Value, value);
 
             Block.AddAction(action);
+
             return true;
         }
     }

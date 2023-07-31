@@ -74,6 +74,11 @@ namespace Gum
         /// </summary>
         private bool _random = false;
 
+        /// <summary>
+        /// Whether the last line processed was an action.
+        /// </summary>
+        private bool _wasPreviousAction = false;
+
         private bool ConsumeIsRandom()
         {
             bool random = _random;
@@ -439,6 +444,8 @@ namespace Gum
                 line = line.Slice(1);
                 column += 1;
 
+                _wasPreviousAction = false;
+
                 switch (nextDirective)
                 {
                     // =
@@ -583,6 +590,8 @@ namespace Gum
 
                             return false;
                         }
+
+                        _wasPreviousAction = true;
 
                         line = line.Slice(0, endAction);
                         return ParseAction(line, index, column);

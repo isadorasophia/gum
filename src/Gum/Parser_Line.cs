@@ -1,4 +1,6 @@
 ﻿using Gum.InnerThoughts;
+using Gum.Utilities;
+using System;
 
 namespace Gum
 {
@@ -11,8 +13,24 @@ namespace Gum
 
     public partial class Parser
     {
-        private bool ParseLine(ReadOnlySpan<char> line, int _, int columnIndex, bool isNested)
+        private bool ParseLine(ReadOnlySpan<char> line, int index, int columnIndex, bool isNested)
         {
+            if (_wasPreviousAction)
+            {
+                // If current line is not an action *but* the previous line was,
+                // create a block so this can be executed immediately after this line.
+
+                Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel: 0, isNested: false);
+                if (result is null)
+                {
+                    OutputHelpers.WriteError($"Unable to add condition on line {index}. Was the indentation correct?");
+                    return false;
+                }
+
+                _currentBlock = result.Id;
+                _wasPreviousAction = false;
+            }
+
             CheckAndCreateLinearBlock(joinLevel: 0, isNested);
 
             // This is probably just a line! So let's just read as it is.

@@ -1877,7 +1877,35 @@ namespace Gum.Tests
             Assert.AreEqual(EdgeKind.HighestScore, target.Kind);
             Assert.AreEqual(2, target.Owner);
             CollectionAssert.AreEqual(new int[] { 3, 4, 5, 6, 7 }, target.Blocks);
+        }
 
+        [TestMethod]
+        public void TestImmediateEffects()
+        {
+            const string situationText = @"
+=Encounter
+    Hi!
+    [c:SomeInteraction]
+    Now, I will say bye.
+    So bye!";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2 }, target.Blocks);
         }
     }
 }
