@@ -1907,5 +1907,45 @@ namespace Gum.Tests
             Assert.AreEqual(1, target.Owner);
             CollectionAssert.AreEqual(new int[] { 2 }, target.Blocks);
         }
+
+        [TestMethod]
+        public void TestChoicesWithIfElse()
+        {
+            const string situationText = @"
+=Encounter
+    @1  (Day == 1)
+            Hi!
+        Hope you are okay.
+
+        (Cooked >= 1)
+            Anything new?
+            >> I guess.
+            > A
+                soma: You could say so.
+                Or...
+                Not!
+            > B
+                soma: You could say so.
+                But actually.
+                No, nevermind.
+                \(At least that's what I keep telling myself\)
+            > C
+                soma: You could say so.
+                Maybe? I guess?
+                I never thought too much about it.
+                [Happy += 5]
+        (...)
+            No.
+        
+        -> exit!";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+        }
     }
 }
