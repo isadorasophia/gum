@@ -228,7 +228,7 @@ namespace Gum
             if (blackboardIndex != -1)
             {
                 blackboard = value.Slice(0, blackboardIndex).ToString();
-                variable = value.Slice(blackboardIndex).ToString();
+                variable = value.Slice(blackboardIndex + 1).ToString();
             }
             else
             {
