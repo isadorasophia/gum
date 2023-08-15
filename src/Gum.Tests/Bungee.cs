@@ -1934,6 +1934,7 @@ namespace Gum.Tests
                 Maybe? I guess?
                 I never thought too much about it.
                 [Happy += 5]
+                Or yes?
         (...)
             No.
         
@@ -1946,6 +1947,204 @@ namespace Gum.Tests
             Assert.IsTrue(situation != null);
 
             Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2, 3 }, target.Blocks);
+
+            target = situation.Edges[2];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(2, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 3 }, target.Blocks);
+
+            target = situation.Edges[3];
+
+            Assert.AreEqual(EdgeKind.IfElse, target.Kind);
+            Assert.AreEqual(3, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 4, 13 }, target.Blocks);
+
+            target = situation.Edges[4];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(4, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 5 }, target.Blocks);
+
+            target = situation.Edges[5];
+
+            Assert.AreEqual(EdgeKind.Choice, target.Kind);
+            Assert.AreEqual(5, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 6, 8, 10 }, target.Blocks);
+
+            target = situation.Edges[6];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(6, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 7 }, target.Blocks);
+
+            target = situation.Edges[7];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(7, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 14 }, target.Blocks);
+
+            target = situation.Edges[8];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(8, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 9 }, target.Blocks);
+
+            target = situation.Edges[9];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(9, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 14 }, target.Blocks);
+
+            target = situation.Edges[10];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(10, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 11 }, target.Blocks);
+
+            target = situation.Edges[11];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(11, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 12 }, target.Blocks);
+
+            target = situation.Edges[12];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(12, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 14 }, target.Blocks);
+
+            target = situation.Edges[13];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(13, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 14 }, target.Blocks);
+        }
+
+        [TestMethod]
+        public void TestChoicesWithIfElse2()
+        {
+            const string situationText = @"
+=Encounter
+    @1  (Day == 1)
+            Hi!
+        Hope you are okay.
+
+        (Cooked >= 1)
+            Anything new?
+            >> I guess.
+            > A
+                soma: You could say so.
+                Or...
+                Not!
+            > B
+                soma: You could say so.
+                But actually.
+                No, nevermind.
+                \(At least that's what I keep telling myself\)
+            > C
+                soma: You could say so.
+                Maybe? I guess?
+                I never thought too much about it.
+                [Happy += 5]
+        (...)
+            No.
+        
+        -> exit!";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1 }, target.Blocks);
+
+            target = situation.Edges[1];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(1, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 2, 3 }, target.Blocks);
+
+            target = situation.Edges[2];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(2, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 3 }, target.Blocks);
+
+            target = situation.Edges[3];
+
+            Assert.AreEqual(EdgeKind.IfElse, target.Kind);
+            Assert.AreEqual(3, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 4, 12 }, target.Blocks);
+
+            target = situation.Edges[4];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(4, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 5 }, target.Blocks);
+
+            target = situation.Edges[5];
+
+            Assert.AreEqual(EdgeKind.Choice, target.Kind);
+            Assert.AreEqual(5, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 6, 8, 10 }, target.Blocks);
+
+            target = situation.Edges[6];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(6, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 7 }, target.Blocks);
+
+            target = situation.Edges[7];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(7, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 13 }, target.Blocks);
+
+            target = situation.Edges[8];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(8, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 9 }, target.Blocks);
+
+            target = situation.Edges[9];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(9, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 13 }, target.Blocks);
+
+            target = situation.Edges[10];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(10, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 11 }, target.Blocks);
+
+            target = situation.Edges[11];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(11, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 13 }, target.Blocks);
+
+            target = situation.Edges[12];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(12, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 13 }, target.Blocks);
         }
     }
 }

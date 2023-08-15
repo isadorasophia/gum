@@ -94,6 +94,8 @@ namespace Gum.InnerThoughts
 
         internal Block PeekLastBlockParent() => Blocks[_lastBlocks.ElementAt(1)];
 
+        internal Block PeekBlockAt(int level) => Blocks[_lastBlocks.ElementAt(level)];
+
         /// <summary>
         /// Creates a new block subjected to a <paramref name="kind"/> relationship.
         /// </summary>
