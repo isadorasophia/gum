@@ -144,7 +144,9 @@ namespace Gum.InnerThoughts
             }
             
             // Do not make a join on the leaves if this is an (...) or another choice (-/+)
-            if (kind == EdgeKind.IfElse || (!lastEdge.Kind.IsSequential() && !kind.IsSequential()))
+            if (kind == EdgeKind.IfElse || 
+                (!lastEdge.Kind.IsSequential() && !kind.IsSequential()) || 
+                (kind == EdgeKind.Choice && lastEdge.Kind == EdgeKind.Choice))
             {
                 blocksToBeJoined = new int[] { parentId };
             }

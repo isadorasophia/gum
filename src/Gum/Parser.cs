@@ -680,7 +680,8 @@ namespace Gum
                 return false;
             }
 
-            if (!_script.CurrentSituation.PeekLastBlock().IsChoice && line[0] != (char)TokenChar.ChoiceBlock)
+            Block parent = _script.CurrentSituation.PeekBlockAt(joinLevel);
+            if (!parent.IsChoice && line[0] != (char)TokenChar.ChoiceBlock)
             {
                 ReadOnlySpan<char> newLine = _currentLine.AsSpan().Slice(0, columnIndex);
 
