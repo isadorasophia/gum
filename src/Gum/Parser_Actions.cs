@@ -43,7 +43,7 @@ namespace Gum
 
                 Block.AddAction(
                     new DialogAction(
-                        new Fact(componentType: component), 
+                        new Fact(componentType: component),
                         BlackboardActionKind.Component, component));
                 return true;
             }
@@ -62,7 +62,7 @@ namespace Gum
                 actionKind = BlackboardActionKind.Add;
             }
 
-            if (actionKind is null && 
+            if (actionKind is null &&
                 (index = line.IndexOf(Tokens.Assign)) != -1)
             {
                 actionKind = BlackboardActionKind.Set;
@@ -104,7 +104,7 @@ namespace Gum
             FactKind? factKind = null;
             object? value = null;
 
-            if (actionKind == BlackboardActionKind.Minus || 
+            if (actionKind == BlackboardActionKind.Minus ||
                 actionKind == BlackboardActionKind.Add)
             {
                 // += or -=

@@ -1,7 +1,7 @@
-﻿using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using Gum.InnerThoughts;
+﻿using Gum.InnerThoughts;
 using Gum.Utilities;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Gum
 {
@@ -77,7 +77,7 @@ namespace Gum
                     nodeKind = CriterionNodeKind.And;
                     break;
 
-                // TODO: Check for '...'
+                    // TODO: Check for '...'
             }
 
             ReadOnlySpan<char> variableToken = token;

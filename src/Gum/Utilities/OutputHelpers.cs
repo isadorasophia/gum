@@ -1,5 +1,5 @@
-﻿using System;
-using Gum.Attributes;
+﻿using Gum.Attributes;
+using System;
 
 namespace Gum.Utilities
 {
@@ -57,7 +57,7 @@ namespace Gum.Utilities
             Console.WriteLine($"\tLine {line} | {currentLine}");
             Console.WriteLine($"\t   ⬇️");
             Console.WriteLine($"\tLine {line} | {newLine}");
-            Console.WriteLine($"\tLine {line+1} | {currentLine}");
+            Console.WriteLine($"\tLine {line + 1} | {currentLine}");
         }
 
         public static void ProposeFixOnLineBelow(int line, ReadOnlySpan<char> currentLine, ReadOnlySpan<char> newLine, ReadOnlySpan<char> newLineBelow)
@@ -81,7 +81,7 @@ namespace Gum.Utilities
             }
 
             // The emoji occupies sort of two characters?
-            arrowLength = Math.Max(1, arrowLength/2);
+            arrowLength = Math.Max(1, arrowLength / 2);
 
             while (arrowLength-- > 0)
             {

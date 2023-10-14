@@ -51,7 +51,7 @@ namespace Gum.InnerThoughts
         public bool SwitchRelationshipTo(EdgeKind kind)
         {
             Edge lastEdge = LastEdge;
-            
+
             if (lastEdge.Kind == kind)
             {
                 // No operation, relationship is already set.
@@ -142,10 +142,10 @@ namespace Gum.InnerThoughts
                 parentId = _lastBlocks.Peek();
                 blocksToBeJoined = new int[] { parentId };
             }
-            
+
             // Do not make a join on the leaves if this is an (...) or another choice (-/+)
-            if (kind == EdgeKind.IfElse || 
-                (!lastEdge.Kind.IsSequential() && !kind.IsSequential()) || 
+            if (kind == EdgeKind.IfElse ||
+                (!lastEdge.Kind.IsSequential() && !kind.IsSequential()) ||
                 (kind == EdgeKind.Choice && lastEdge.Kind == EdgeKind.Choice))
             {
                 blocksToBeJoined = new int[] { parentId };
@@ -505,7 +505,7 @@ namespace Gum.InnerThoughts
                         case EdgeKind.IfElse:
                             if (Edges[b].Blocks.LastOrDefault() is int lastBlockId)
                             {
-                                if (Blocks[lastBlockId].Requirements.Count == 0 && 
+                                if (Blocks[lastBlockId].Requirements.Count == 0 &&
                                     prunnedLeafBlocks.Contains(lastBlockId))
                                 {
                                     prunnedLeafBlocks.Remove(b);

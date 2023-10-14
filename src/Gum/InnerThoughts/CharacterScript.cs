@@ -21,11 +21,11 @@ namespace Gum.InnerThoughts
 
         private Situation? _currentSituation;
 
-        public Situation CurrentSituation => 
+        public Situation CurrentSituation =>
             _currentSituation ?? throw new InvalidOperationException("☠️ Unable to fetch an active situation.");
 
         public bool HasCurrentSituation => _currentSituation != null;
-        
+
         public bool AddNewSituation(ReadOnlySpan<char> name)
         {
             int id = _nextId++;

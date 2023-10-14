@@ -1,5 +1,5 @@
-﻿using System.Diagnostics;
-using Gum.Utilities;
+﻿using Gum.Utilities;
+using System.Diagnostics;
 
 namespace Gum.InnerThoughts
 {

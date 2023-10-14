@@ -1,9 +1,9 @@
-﻿using System;
+﻿using Gum.InnerThoughts;
+using Gum.Utilities;
+using System;
 using System.Data.Common;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using Gum.InnerThoughts;
-using Gum.Utilities;
 
 namespace Gum
 {
@@ -316,7 +316,7 @@ namespace Gum
                     //      @1  Hi!
                     //
                     //  Bye. <- this will apply a join on (something).
-                    if (_lastLineToken == TokenChar.Flow && 
+                    if (_lastLineToken == TokenChar.Flow &&
                         _script.CurrentSituation.PeekLastBlockParent().Conditional)
                     {
                         joinLevel += 1;
@@ -376,7 +376,7 @@ namespace Gum
                                 }
                             }
 
-                            if (line[0] != (char)TokenChar.MultipleBlock && 
+                            if (line[0] != (char)TokenChar.MultipleBlock &&
                                 line[0] != (char)TokenChar.OnceBlock)
                             {
                                 _script.CurrentSituation.PopLastBlock();
@@ -929,8 +929,8 @@ namespace Gum
             {
                 char[] clean = Array.FindAll(directive.ToArray(), char.IsDigit);
                 OutputHelpers.ProposeFix(
-                    index, 
-                    before: _currentLine, 
+                    index,
+                    before: _currentLine,
                     after: _currentLine.Replace(directive.ToString(), new string(clean)));
 
                 return;
@@ -940,8 +940,8 @@ namespace Gum
             if (commonLength > 3)
             {
                 OutputHelpers.ProposeFix(
-                    index, 
-                    before: _currentLine, 
+                    index,
+                    before: _currentLine,
                     after: _currentLine.Replace(directive.ToString(), "random"));
 
                 return;

@@ -1,7 +1,7 @@
-﻿using System.Diagnostics;
-using System.Text;
-using Gum.Blackboards;
+﻿using Gum.Blackboards;
 using Gum.Utilities;
+using System.Diagnostics;
+using System.Text;
 
 namespace Gum.InnerThoughts
 {

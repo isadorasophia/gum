@@ -1,6 +1,6 @@
-﻿using System.Text;
+﻿using Gum.Utilities;
 using System.Diagnostics;
-using Gum.Utilities;
+using System.Text;
 
 namespace Gum.InnerThoughts
 {

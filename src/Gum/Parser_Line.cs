@@ -78,7 +78,7 @@ namespace Gum
 
             // First, check if there is a speaker specified and look for the escape token.
             end = speakerText.IndexOf(Tokens.SpeakerToken);
-            if (end == -1 || speakerText[end-1] == Tokens.EscapeToken)
+            if (end == -1 || speakerText[end - 1] == Tokens.EscapeToken)
             {
                 return (speaker, portrait);
             }
