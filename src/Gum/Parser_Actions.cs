@@ -162,7 +162,7 @@ namespace Gum
                 {
                     OutputHelpers.WriteError($"Expected '{line}' to be an integer, boolean or string on line {lineIndex}.");
 
-                    if (OutputTryGuessAssignmentValue(line, lineIndex, currentColumn))
+                    if (OutputTryGuessAssignmentValue(line, lineIndex))
                     {
                         return false;
                     }

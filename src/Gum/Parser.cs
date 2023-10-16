@@ -643,7 +643,7 @@ namespace Gum
             }
             else
             {
-                return ParseLine(line, index, column, isNestedBlock);
+                return ParseLine(line, index, isNestedBlock);
             }
 
             if (!line.IsEmpty)

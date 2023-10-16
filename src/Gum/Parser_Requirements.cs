@@ -278,7 +278,7 @@ namespace Gum
             // Unrecognized token?
             OutputHelpers.WriteError($"Unexpected rule value '{specifier}' on line {lineIndex}.");
 
-            if (OutputTryGuessAssignmentValue(specifier, lineIndex, column))
+            if (OutputTryGuessAssignmentValue(specifier, lineIndex))
             {
                 return;
             }
@@ -292,7 +292,7 @@ namespace Gum
                 issue: "This rule could not be recognized.");
         }
 
-        private bool OutputTryGuessAssignmentValue(ReadOnlySpan<char> specifier, int lineIndex, int column)
+        private bool OutputTryGuessAssignmentValue(ReadOnlySpan<char> specifier, int lineIndex)
         {
             if (char.IsDigit(specifier[0]))
             {
