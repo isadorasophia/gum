@@ -379,14 +379,20 @@ namespace Gum
                             if (line[0] != (char)TokenChar.MultipleBlock &&
                                 line[0] != (char)TokenChar.OnceBlock)
                             {
-                                _script.CurrentSituation.PopLastBlock();
-
-                                // We might need to do this check out of this switch case?
-                                if (_script.CurrentSituation.PeekLastBlock().IsChoice &&
-                                    _script.CurrentSituation.PeekLastEdgeKind() != EdgeKind.Choice)
+                                // We might need to check out if we're too deep due to a dialogue choice.
+                                // E.g.:
+                                //     > Yup.
+                                //         Great!
+                                //
+                                //        >> How is life so far?
+                                //        > It's been nice.
+                                //            No way.
+                                //    > No...                       <- This line needs to pop twice.
+                                //        ...
+                                int pop = joinLevel;
+                                while (pop-- > 0)
                                 {
                                     _script.CurrentSituation.PopLastBlock();
-                                    joinLevel -= 1;
                                 }
 
                                 createJoinBlock = false;
