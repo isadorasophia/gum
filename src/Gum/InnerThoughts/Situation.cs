@@ -94,7 +94,21 @@ namespace Gum.InnerThoughts
 
         internal Block PeekLastBlockParent() => Blocks[_lastBlocks.ElementAt(1)];
 
-        internal Block PeekBlockAt(int level) => Blocks[_lastBlocks.ElementAt(level)];
+        internal Block PeekBlockAt(int level)
+        {
+            int index;
+
+            try
+            {
+                index = _lastBlocks.ElementAt(level);
+            }
+            catch
+            {
+                _ = _lastBlocks.TryPeek(out index);
+            }
+
+            return Blocks[index];
+        }
 
         internal EdgeKind PeekEdgeAtKind(int level) => Edges[_lastBlocks.ElementAt(level)].Kind;
 
