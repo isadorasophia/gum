@@ -292,7 +292,7 @@ namespace Gum
                 issue: "This rule could not be recognized.");
         }
 
-        private bool OutputTryGuessAssignmentValue(ReadOnlySpan<char> specifier, int lineIndex, int column)
+        private bool OutputTryGuessAssignmentValue(ReadOnlySpan<char> specifier, int lineIndex, int _)
         {
             if (char.IsDigit(specifier[0]))
             {

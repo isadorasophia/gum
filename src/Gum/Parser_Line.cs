@@ -13,7 +13,7 @@ namespace Gum
 
     public partial class Parser
     {
-        private bool ParseLine(ReadOnlySpan<char> line, int index, int columnIndex, bool isNested)
+        private bool ParseLine(ReadOnlySpan<char> line, int index, int _, bool isNested)
         {
             if (_wasPreviousAction)
             {
