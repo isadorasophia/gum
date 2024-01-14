@@ -702,5 +702,7 @@ namespace Gum.InnerThoughts
 
             _ = _blocksWithGoto.Add(block);
         }
+
+        public bool HasGoto(int block) => _blocksWithGoto.Contains(block);
     }
 }

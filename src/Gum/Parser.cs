@@ -628,7 +628,7 @@ namespace Gum
                             line = line.Slice(1);
                             column += 1;
 
-                            return ParseGoto(line, index, column, isNestedBlock);
+                            return ParseGoto(line, index, column, joinLevel, isNestedBlock);
                         }
 
                         _playUntil = 1;
@@ -792,9 +792,26 @@ namespace Gum
             return true;
         }
 
-        private bool ParseGoto(ReadOnlySpan<char> line, int lineIndex, int currentColumn, bool isNested)
+        private bool ParseGoto(ReadOnlySpan<char> line, int lineIndex, int currentColumn, int joinLevel, bool nested)
         {
-            CheckAndCreateLinearBlock(joinLevel: 0, isNested);
+            CheckAndCreateLinearBlock(joinLevel, nested);
+
+            // If the block already has a goto, create another block. E.g.:
+            // =entry
+            //  @1  -> some
+            //
+            //  -> talk
+            if (_script.CurrentSituation.HasGoto(_currentBlock))
+            {
+                Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel, nested);
+                if (result is null)
+                {
+                    OutputHelpers.WriteError($"Unable to create option on line {lineIndex}.");
+                    return false;
+                }
+
+                _currentBlock = result.Id;
+            }
 
             // Check if we started specifying the relationship from the previous requirement.
             ReadOnlySpan<char> location = line.TrimStart().TrimEnd();
