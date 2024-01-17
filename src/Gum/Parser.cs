@@ -344,11 +344,11 @@ namespace Gum
                             joinLevel -= 1;
                         }
                     }
-                    else if (Defines(line, new TokenChar[] {
+                    else if (Defines(line, [
                         TokenChar.Situation,
                         TokenChar.ChoiceBlock,
                         TokenChar.MultipleBlock,
-                        TokenChar.OnceBlock }))
+                        TokenChar.OnceBlock ]))
                     {
                         if (line.Length > 1 && line[1] == (char)TokenChar.ChoiceBlock)
                         {
@@ -369,7 +369,8 @@ namespace Gum
                                 //      (Something) < parent of this is non linear, so extra pop is needed
                                 //          Hello
                                 //  -   Option b
-                                if (_script.CurrentSituation.PeekLastBlockParent().NonLinearNode)
+                                if (_script.CurrentSituation.PeekLastBlock().NonLinearNode || 
+                                    _script.CurrentSituation.PeekLastBlockParent().NonLinearNode)
                                 {
                                     _script.CurrentSituation.PopLastBlock();
                                     createJoinBlock = false;
