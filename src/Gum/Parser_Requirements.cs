@@ -249,6 +249,11 @@ namespace Gum
                 fact = FactKind.Int;
                 value = @int;
             }
+            else if (TryReadFloat(line) is float @float)
+            {
+                fact = FactKind.Float;
+                value = @float;
+            }
             else if (MemoryExtensions.Equals(line.Trim(), "true", StringComparison.OrdinalIgnoreCase))
             {
                 fact = FactKind.Bool;

@@ -943,6 +943,22 @@ namespace Gum
         }
 
         /// <summary>
+        /// Expects to read a float of a line such as:
+        ///     ".2 (Something else)"   -> valid
+        ///     "..3something"           -> invalid
+        ///     ".2"                    -> valid
+        /// </summary>
+        private float? TryReadFloat(ReadOnlySpan<char> maybeInteger)
+        {
+            if (float.TryParse(maybeInteger, out float result))
+            {
+                return result;
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Try to guess why we failed parsing a '@' directive.
         /// </summary>
         private void TryGuessFlowDirectiveError(ReadOnlySpan<char> directive, int index)

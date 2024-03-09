@@ -17,6 +17,8 @@ namespace Gum.InnerThoughts
 
         public readonly bool? BoolValue = null;
 
+        public readonly float? FloatValue = null;
+
         public Criterion() { }
 
         /// <summary>
@@ -34,6 +36,7 @@ namespace Gum.InnerThoughts
             bool? @bool = null;
             int? @int = null;
             string? @string = null;
+            float? @float = null;
 
             // Do not propagate previous values.
             switch (fact.Kind)
@@ -53,9 +56,13 @@ namespace Gum.InnerThoughts
                 case FactKind.Weight:
                     @int = (int)@value;
                     break;
+
+                case FactKind.Float:
+                    @float = (float)@value;
+                    break;
             }
 
-            (Fact, Kind, StrValue, IntValue, BoolValue) = (fact, kind, @string, @int, @bool);
+            (Fact, Kind, StrValue, IntValue, BoolValue, FloatValue) = (fact, kind, @string, @int, @bool, @float);
         }
 
         public string DebuggerDisplay()
@@ -87,6 +94,10 @@ namespace Gum.InnerThoughts
 
                 case FactKind.Weight:
                     result = result.Append(IntValue);
+                    break;
+
+                case FactKind.Float:
+                    result = result.Append(FloatValue);
                     break;
             }
 

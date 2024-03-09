@@ -20,6 +20,8 @@ namespace Gum.InnerThoughts
 
         public readonly string? ComponentValue = null;
 
+        public readonly float? FloatValue = null;
+
         public DialogAction() { }
 
         public DialogAction(Fact fact, BlackboardActionKind kind, object value)
@@ -27,6 +29,7 @@ namespace Gum.InnerThoughts
             bool? @bool = null;
             int? @int = null;
             string? @string = null;
+            float? @float = null;
 
             string? component = null;
 
@@ -48,9 +51,13 @@ namespace Gum.InnerThoughts
                 case FactKind.Component:
                     component = (string)value;
                     break;
+
+                case FactKind.Float:
+                    @float = (float)@value;
+                    break;
             }
 
-            (Fact, Kind, StrValue, IntValue, BoolValue, ComponentValue) = (fact, kind, @string, @int, @bool, component);
+            (Fact, Kind, StrValue, IntValue, BoolValue, ComponentValue, FloatValue) = (fact, kind, @string, @int, @bool, component, @float);
         }
 
         public string DebuggerDisplay()
@@ -82,6 +89,10 @@ namespace Gum.InnerThoughts
 
                 case FactKind.Component:
                     result = result.Append(ComponentValue);
+                    break;
+
+                case FactKind.Float:
+                    result = result.Append(FloatValue);
                     break;
             }
 

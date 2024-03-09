@@ -111,11 +111,20 @@ namespace Gum
                 line = line.Slice(Tokens.Minus.Length); // minus and add has the same length, so i will keep this simple...
                 currentColumn += Tokens.Minus.Length;
 
-                factKind = FactKind.Int;
-                value = TryReadInteger(line);
-                if (value is not int)
+                if (TryReadInteger(line) is int @int)
                 {
-                    OutputHelpers.WriteError($"Expected '{line}' to be an integer on line {lineIndex}.");
+                    factKind = FactKind.Int;
+                    value = @int;
+                }
+                else if (TryReadFloat(line) is float @float)
+                {
+                    factKind = FactKind.Float;
+                    value = @float;
+                }
+
+                if (factKind is null || value is null)
+                {
+                    OutputHelpers.WriteError($"Expected '{line}' to be a number on line {lineIndex}.");
 
                     char[] clean = Array.FindAll(line.ToArray(), char.IsDigit);
                     if (clean.Length != 0)

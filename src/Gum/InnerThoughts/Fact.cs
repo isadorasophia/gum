@@ -18,7 +18,8 @@ namespace Gum.InnerThoughts
         /// <summary>
         /// Used when checking for required components.
         /// </summary>
-        Component
+        Component,
+        Float
     }
 
     [DebuggerDisplay("{Name}")]
