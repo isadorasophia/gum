@@ -1,16 +1,16 @@
 ﻿using Gum.Utilities;
-using Newtonsoft.Json;
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 
 namespace Gum.InnerThoughts
 {
     [DebuggerDisplay("{Name}")]
     public class Situation
     {
-        [JsonProperty]
+        [JsonInclude]
         public readonly int Id = 0;
 
-        [JsonProperty]
+        [JsonInclude]
         public readonly string Name = string.Empty;
 
         public int Root = 0;

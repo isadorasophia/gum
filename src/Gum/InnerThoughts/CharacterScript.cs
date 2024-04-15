@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿
+using System.Text.Json.Serialization;
 
 namespace Gum.InnerThoughts
 {
@@ -7,12 +8,12 @@ namespace Gum.InnerThoughts
         /// <summary>
         /// List of tasks or events that the <see cref="Situations"/> may do.
         /// </summary>
-        [JsonProperty]
+        [Serialize]
         private readonly SortedList<int, Situation> _situations = new();
 
         private readonly Dictionary<string, int> _situationNames = new();
 
-        [JsonProperty]
+        [Serialize]
         private int _nextId = 0;
 
         public readonly string Name;

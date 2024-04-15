@@ -1,9 +1,9 @@
 ﻿using Gum.InnerThoughts;
 using Gum.Utilities;
-using Murder.Serialization;
-using Newtonsoft.Json;
 using System.Reflection;
 using System.Text;
+using Gum.Serialization;
+using System.Text.Json;
 
 namespace Gum
 {
@@ -64,7 +64,7 @@ namespace Gum
 
         internal static bool Save(CharacterScript script, string path)
         {
-            string json = JsonConvert.SerializeObject(script, Settings);
+            string json = JsonSerializer.Serialize(script, MurderSerializerOptionsExtensions.Options);
             File.WriteAllText(path: Path.Join(path, $"{script.Name}.json"), contents: json);
 
             return true;
@@ -79,7 +79,7 @@ namespace Gum
             }
 
             string json = File.ReadAllText(filepath);
-            return JsonConvert.DeserializeObject<CharacterScript>(json);
+            return JsonSerializer.Deserialize<CharacterScript>(json, MurderSerializerOptionsExtensions.Options);
         }
 
         /// <summary>
@@ -122,14 +122,6 @@ namespace Gum
 
             return scripts.ToArray();
         }
-
-        internal readonly static JsonSerializerSettings Settings = new()
-        {
-            TypeNameHandling = TypeNameHandling.None,
-            ContractResolver = new WritablePropertiesOnlyResolver(),
-            Formatting = Formatting.Indented,
-            NullValueHandling = NullValueHandling.Ignore
-        };
 
         /// <summary>
         /// Handles any relative path to the executable.
