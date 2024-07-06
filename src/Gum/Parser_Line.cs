@@ -40,7 +40,13 @@ namespace Gum
 
         private void AddLineToBlock(ReadOnlySpan<char> line)
         {
-            (string? speaker, string? portrait) = ReadSpeakerAndLine(line, out int end);
+            float chance = ReadChance(line, out int end);
+            if (end != -1)
+            {
+                line = line.Slice(end + 1);
+            }
+
+            (string? speaker, string? portrait) = ReadSpeakerAndLine(line, out end);
             if (end != -1)
             {
                 line = line.Slice(end + 1);
@@ -48,7 +54,37 @@ namespace Gum
 
             line = line.TrimStart().TrimEnd();
 
-            Block.AddLine(speaker, portrait, line.ToString().Replace("\\", ""));
+            Block.AddLine(speaker, portrait, line.ToString().Replace("\\", ""), chance);
+        }
+
+        /// <summary>
+        /// Read an optional chance argument, expects to receive a line:
+        ///     {line}
+        ///     %10 {line}
+        ///     {speaker}: {line}
+        /// </summary>
+        /// <param name="line">Line.</param>
+        /// <param name="end">If none, returns -1.</param>
+        private float ReadChance(ReadOnlySpan<char> line, out int end)
+        {
+            end = -1;
+
+            if (line.Length == 0 || line[0] != (char)TokenChar.Chance)
+            {
+                return 1;
+            }
+
+            line = line[1..];
+
+            ReadOnlySpan<char> argument = GetNextWord(line, out int endOfNumber);
+            if (TryReadInteger(argument) is not int number)
+            {
+                return 1;
+            }
+
+            // Adds up the '%' part.
+            end = endOfNumber + 1;
+            return number == 0 ? 0 : number / 100f;
         }
 
         /// <summary>

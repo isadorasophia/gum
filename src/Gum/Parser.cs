@@ -23,7 +23,7 @@ namespace Gum
         ChoiceBlock = '>',
         Flow = '@',
         Negative = '!',
-        Debug = '%'
+        Chance = '%'
     }
 
     internal static partial class Tokens
@@ -461,7 +461,7 @@ namespace Gum
                 }
             }
 
-            if (Enum.IsDefined(typeof(TokenChar), (int)line[0]))
+            if (IsDirective(line[0]))
             {
                 TokenChar nextDirective = (TokenChar)line[0];
 
@@ -643,6 +643,11 @@ namespace Gum
                     // >
                     case TokenChar.ChoiceBlock:
                         return ParseChoice(line, index, column, joinLevel, isNestedBlock);
+
+                    // %
+                    case TokenChar.Chance:
+                        OutputHelpers.WriteWarning($"Token '{(char)TokenChar.Chance}' is not supposed to be a directive on line {index}.");
+                        return ParseLine(line, index, column, isNestedBlock);
 
                     default:
                         return true;
@@ -988,6 +993,17 @@ namespace Gum
             }
 
             OutputHelpers.Remark("We currently support '@{number}' and '@random' as valid directives. Please, reach out if this was not clear. 🙏");
+        }
+
+        private bool IsDirective(char c)
+        {
+            if ((TokenChar)c == TokenChar.Chance)
+            {
+                // This token is not considered a directive.
+                return false;
+            }
+
+            return Enum.IsDefined(typeof(TokenChar), (int)c);
         }
     }
 }

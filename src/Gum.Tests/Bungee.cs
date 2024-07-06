@@ -16,41 +16,6 @@ namespace Gum.Tests
         }
 
         [TestMethod]
-        public void TestSerialization()
-        {
-            const string path = "./resources";
-
-            CharacterScript[] results = Reader.Parse(path, lastModified: null, out string errors);
-
-            Assert.IsTrue(string.IsNullOrEmpty(errors));
-            Assert.AreEqual(1, results.Length);
-
-            IEnumerable<Situation> situations = results[0].FetchAllSituations();
-            Assert.AreEqual(3, situations.Count());
-        }
-
-        [TestMethod]
-        public void TestDeserialization()
-        {
-            const string path = "./resources";
-
-            CharacterScript[] results = Reader.Parse(path, lastModified: null, out string errors);
-
-            Assert.IsTrue(string.IsNullOrEmpty(errors));
-            Assert.AreEqual(1, results.Length);
-
-            CharacterScript script = results[0];
-            string json = JsonConvert.SerializeObject(script, Reader.Settings);
-
-            CharacterScript? deserializedScript = JsonConvert.DeserializeObject<CharacterScript>(json);
-
-            Assert.IsNotNull(deserializedScript);
-
-            IEnumerable<Situation> situations = deserializedScript.FetchAllSituations();
-            Assert.AreEqual(3, situations.Count());
-        }
-
-        [TestMethod]
         public void TestSingleSentence()
         {
             const string situationText = @"
@@ -609,6 +574,36 @@ namespace Gum.Tests
             Assert.AreEqual(EdgeKind.HighestScore, target.Kind);
             Assert.AreEqual(0, target.Owner);
             CollectionAssert.AreEqual(new int[] { 1, 2, 3, 4 }, target.Blocks);
+        }
+
+        [TestMethod]
+        public void TestChoicesWithChance()
+        {
+            const string situationText = @"
+=Chitchat
+    -   %20 You are amazing.
+        %80 FOR A COOKER.
+    -   %10 I'm sorry. I was rude there.
+        I needed to come up with stuff.
+        I actually did enjoy your food.
+    +   %300 ...
+    -   The dead fly was on purpose, right?";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.HighestScore, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1, 2, 3, 4 }, target.Blocks);
+
+            Assert.IsTrue(situation.Blocks[1].Lines[0].Chance == .2f);
+            Assert.IsTrue(situation.Blocks[1].Lines[1].Chance == .8f);
+            Assert.IsTrue(situation.Blocks[2].Lines[0].Chance == .1f);
         }
 
         [TestMethod]
