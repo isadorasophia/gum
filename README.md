@@ -24,6 +24,7 @@ i: when referencing icons
 // comments
 >> title for options section
 > option
+%[0-9]+ chance of executing lines
 ```
 
 ## Usage
