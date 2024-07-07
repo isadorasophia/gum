@@ -1,8 +1,5 @@
 ﻿using Gum.InnerThoughts;
 using Gum.Utilities;
-using System;
-using System.Data.Common;
-using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace Gum
@@ -92,12 +89,25 @@ namespace Gum
         /// </summary>
         private int _playUntil = -1;
 
+        /// <summary>
+        /// The last directive '%' to dialogue chance.
+        /// </summary>
+        private float _chance = 1;
+
         private int ConsumePlayUntil()
         {
             int playUntil = _playUntil;
             _playUntil = -1;
 
             return playUntil;
+        }
+
+        private float ConsumeChance()
+        {
+            float chance = _chance;
+            _chance = 1;
+
+            return chance;
         }
 
         //
@@ -404,7 +414,7 @@ namespace Gum
                     // Depending where we were, we may need to "join" different branches.
                     if (createJoinBlock)
                     {
-                        Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel, isNested: false);
+                        Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), ConsumeChance(), joinLevel, isNested: false);
                         if (result is null)
                         {
                             OutputHelpers.WriteError($"Unable to join line {index}. Was the indentation correct?");
@@ -425,7 +435,7 @@ namespace Gum
                     // AS LONG AS the next block is not another choice!
                     if (_script.CurrentSituation.PeekLastBlock().IsChoice && !(line.Length > 1 && line[1] == (char)TokenChar.ChoiceBlock))
                     {
-                        Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel: 0, isNested: true);
+                        Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), ConsumeChance(), joinLevel: 0, isNested: true);
                         if (result is null)
                         {
                             OutputHelpers.WriteError($"Unable to nest line {index}. Was the indentation correct?");
@@ -544,7 +554,7 @@ namespace Gum
                                     return false;
                                 }
 
-                                Block? result = _script.CurrentSituation.AddBlock(number, joinLevel, isNestedBlock, EdgeKind.Next);
+                                Block? result = _script.CurrentSituation.AddBlock(number, ConsumeChance(), joinLevel, isNestedBlock, EdgeKind.Next);
                                 if (result is null)
                                 {
                                     OutputHelpers.WriteError($"Unable to join line {index}. Was the indentation correct?");
@@ -568,19 +578,19 @@ namespace Gum
                         {
                             return true;
                         }
-                        else
-                        {
-                            column += end;
-                            line = line.Slice(end).TrimStart();
-                        }
+
+                        column += end;
+                        line = line.Slice(end).TrimStart();
 
                         break;
 
                     // (
                     case TokenChar.BeginCondition:
+                    {
                         if (!hasCreatedBlock)
                         {
                             int playUntil = ConsumePlayUntil();
+                            float chance = ConsumeChance();
 
                             EdgeKind relationshipKind = EdgeKind.Next;
                             if (line.StartsWith(Tokens.Else))
@@ -589,7 +599,7 @@ namespace Gum
                             }
 
                             Block? result = _script.CurrentSituation.AddBlock(
-                                playUntil, joinLevel, isNestedBlock, relationshipKind);
+                                playUntil, chance, joinLevel, isNestedBlock, relationshipKind);
                             if (result is null)
                             {
                                 OutputHelpers.WriteError($"Unable to create condition on line {index}.");
@@ -600,6 +610,7 @@ namespace Gum
                         }
 
                         return ParseConditions(line, index, column);
+                    }
 
                     // [
                     case TokenChar.BeginAction:
@@ -646,8 +657,35 @@ namespace Gum
 
                     // %
                     case TokenChar.Chance:
-                        OutputHelpers.WriteWarning($"Token '{(char)TokenChar.Chance}' is not supposed to be a directive on line {index}.");
-                        return ParseLine(line, index, column, isNestedBlock);
+                    {
+                        if (!ParseChance(line, index, out float chance, out int endOfChance))
+                        {
+                            return false;
+                        }
+
+                        if (hasCreatedBlock)
+                        {
+                            Block.Chance = chance;
+                        }
+                        else
+                        {
+                            Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), chance, joinLevel, isNestedBlock, EdgeKind.Next);
+                            if (result is null)
+                            {
+                                OutputHelpers.WriteError($"Unable to join line {index}. Was the indentation correct?");
+                                return false;
+                            }
+
+                            _currentBlock = result.Id;
+
+                            // Ignore any other join or nested operations, since the block has been dealed with.
+                            joinLevel = 0;
+                        }
+
+                        column += endOfChance;
+                        line = line.Slice(endOfChance);
+                        break;
+                    }
 
                     default:
                         return true;
@@ -721,7 +759,7 @@ namespace Gum
                     after: _currentLine.TrimEnd().Replace($"{line[0]}", $"\\{line[0]}"));
             }
 
-            Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel, nested, EdgeKind.Choice);
+            Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), ConsumeChance(), joinLevel, nested, EdgeKind.Choice);
             if (result is null)
             {
                 OutputHelpers.WriteError($"Unable to create condition on line {lineIndex}. This may happen if you declare an else ('...') without a prior condition, for example.");
@@ -744,7 +782,7 @@ namespace Gum
 
             // TODO: Check for requirements!
 
-            Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel, nested, relationshipKind);
+            Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), ConsumeChance(), joinLevel, nested, relationshipKind);
             if (result is null)
             {
                 OutputHelpers.WriteError($"Unable to create option on line {lineIndex}.");
@@ -760,6 +798,22 @@ namespace Gum
                 return true;
             }
 
+            if (line[0] == (char)TokenChar.Chance)
+            {
+                line = line[1..];
+
+                if (ParseChance(line, lineIndex, out float chance, out int endOfChance))
+                {
+                    _chance = chance;
+                    line = line.Slice(endOfChance).TrimStart();
+
+                    if (line.IsEmpty)
+                    {
+                        return true;
+                    }
+                }
+            }
+
             if (line[0] == (char)TokenChar.BeginCondition)
             {
                 // Do not create a new block for conditions. This is because an option is deeply tied
@@ -771,6 +825,8 @@ namespace Gum
             {
                 return ParseChoice(line.Slice(1), lineIndex, columnIndex + 1, joinLevel: 0, nested: false);
             }
+
+            Block.Chance = ConsumeChance();
 
             AddLineToBlock(line);
             return true;
@@ -785,7 +841,7 @@ namespace Gum
                 (isNested && Block.IsChoice && !Block.Conditional))
             {
                 Block? result = _script.CurrentSituation.AddBlock(
-                    ConsumePlayUntil(), joinLevel, isNested: false, EdgeKind.Next);
+                    ConsumePlayUntil(), ConsumeChance(), joinLevel, isNested: false, EdgeKind.Next);
 
                 if (result is null)
                 {
@@ -809,7 +865,7 @@ namespace Gum
             //  -> talk
             if (_script.CurrentSituation.HasGoto(_currentBlock))
             {
-                Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel, nested);
+                Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), ConsumeChance(), joinLevel, nested);
                 if (result is null)
                 {
                     OutputHelpers.WriteError($"Unable to create option on line {lineIndex}.");
@@ -995,15 +1051,6 @@ namespace Gum
             OutputHelpers.Remark("We currently support '@{number}' and '@random' as valid directives. Please, reach out if this was not clear. 🙏");
         }
 
-        private bool IsDirective(char c)
-        {
-            if ((TokenChar)c == TokenChar.Chance)
-            {
-                // This token is not considered a directive.
-                return false;
-            }
-
-            return Enum.IsDefined(typeof(TokenChar), (int)c);
-        }
+        private bool IsDirective(char c) => Enum.IsDefined(typeof(TokenChar), (int)c);
     }
 }

@@ -582,11 +582,11 @@ namespace Gum.Tests
             const string situationText = @"
 =Chitchat
     -   %20 You are amazing.
-        %80 FOR A COOKER.
+        FOR A COOKER.
     -   %10 I'm sorry. I was rude there.
         I needed to come up with stuff.
         I actually did enjoy your food.
-    +   %300 ...
+    +   %80 ...
     -   The dead fly was on purpose, right?";
 
             CharacterScript? script = Read(situationText);
@@ -601,9 +601,9 @@ namespace Gum.Tests
             Assert.AreEqual(0, target.Owner);
             CollectionAssert.AreEqual(new int[] { 1, 2, 3, 4 }, target.Blocks);
 
-            Assert.IsTrue(situation.Blocks[1].Lines[0].Chance == .2f);
-            Assert.IsTrue(situation.Blocks[1].Lines[1].Chance == .8f);
-            Assert.IsTrue(situation.Blocks[2].Lines[0].Chance == .1f);
+            Assert.IsTrue(situation.Blocks[1].Chance == .2f);
+            Assert.IsTrue(situation.Blocks[2].Chance == .1f);
+            Assert.IsTrue(situation.Blocks[3].Chance == .8f);
         }
 
         [TestMethod]

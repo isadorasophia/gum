@@ -15,6 +15,11 @@ namespace Gum.InnerThoughts
         /// </summary>
         public int PlayUntil = -1;
 
+        /// <summary>
+        /// Chance of executing this dialogue. This ranges from 0 to 1.
+        /// </summary>
+        public float Chance = 1;
+
         public readonly List<CriterionNode> Requirements = new();
 
         public readonly List<Line> Lines = new();
@@ -35,13 +40,12 @@ namespace Gum.InnerThoughts
 
         public Block() { }
 
-        public Block(int id) { Id = id; }
+        public Block(int id, int playUntil, float chance) => 
+            (Id, PlayUntil, Chance) = (id, playUntil, chance);
 
-        public Block(int id, int playUntil) { (Id, PlayUntil) = (id, playUntil); }
-
-        public void AddLine(string? speaker, string? portrait, string text, float chance)
+        public void AddLine(string? speaker, string? portrait, string text)
         {
-            Lines.Add(new(speaker, portrait, text, chance));
+            Lines.Add(new(speaker, portrait, text));
         }
 
         public void AddRequirement(CriterionNode node)

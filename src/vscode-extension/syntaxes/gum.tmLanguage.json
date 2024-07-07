@@ -57,6 +57,10 @@
 					"name": "constant.numeric.flow.gum"
 				},
 				{
+					"match": "\\%[0-9]+",
+					"name": "constant.numeric.flow.gum"
+				},
+				{
 					"match": "\\@random",
 					"name": "constant.numeric.flow.random.gum"
 				},

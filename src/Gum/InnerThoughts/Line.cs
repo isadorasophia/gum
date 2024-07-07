@@ -22,11 +22,6 @@ namespace Gum.InnerThoughts
         /// </summary>
         public readonly float? Delay = null;
 
-        /// <summary>
-        /// Chance of displaying the line, from 0 to 1.
-        /// </summary>
-        public readonly float Chance = 1;
-
         public Line() { }
 
         public Line(string? speaker) => Speaker = speaker;
@@ -34,8 +29,8 @@ namespace Gum.InnerThoughts
         /// <summary>
         /// Create a line with a text. That won't be used as a timer.
         /// </summary>
-        public Line(string? speaker, string? portrait, string text, float chance) => 
-            (Speaker, Portrait, Text, Chance) = (speaker, portrait, text, chance);
+        public Line(string? speaker, string? portrait, string text) => 
+            (Speaker, Portrait, Text) = (speaker, portrait, text);
 
         public bool IsText => Text is not null;
     }

@@ -1,6 +1,8 @@
 ﻿using Gum.InnerThoughts;
 using Gum.Utilities;
 using System;
+using System.Data.Common;
+using System.Reflection;
 
 namespace Gum
 {
@@ -20,7 +22,7 @@ namespace Gum
                 // If current line is not an action *but* the previous line was,
                 // create a block so this can be executed immediately after this line.
 
-                Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), joinLevel: 0, isNested: false);
+                Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), ConsumeChance(), joinLevel: 0, isNested: false);
                 if (result is null)
                 {
                     OutputHelpers.WriteError($"Unable to add condition on line {index}. Was the indentation correct?");
@@ -40,13 +42,7 @@ namespace Gum
 
         private void AddLineToBlock(ReadOnlySpan<char> line)
         {
-            float chance = ReadChance(line, out int end);
-            if (end != -1)
-            {
-                line = line.Slice(end + 1);
-            }
-
-            (string? speaker, string? portrait) = ReadSpeakerAndLine(line, out end);
+            (string? speaker, string? portrait) = ReadSpeakerAndLine(line, out int end);
             if (end != -1)
             {
                 line = line.Slice(end + 1);
@@ -54,37 +50,32 @@ namespace Gum
 
             line = line.TrimStart().TrimEnd();
 
-            Block.AddLine(speaker, portrait, line.ToString().Replace("\\", ""), chance);
+            Block.AddLine(speaker, portrait, line.ToString().Replace("\\", ""));
         }
 
         /// <summary>
         /// Read an optional chance argument, expects to receive a line:
-        ///     {line}
         ///     %10 {line}
-        ///     {speaker}: {line}
+        ///      ^
         /// </summary>
         /// <param name="line">Line.</param>
         /// <param name="end">If none, returns -1.</param>
-        private float ReadChance(ReadOnlySpan<char> line, out int end)
+        private bool ParseChance(ReadOnlySpan<char> line, int index, out float chance, out int end)
         {
+            chance = 1;
             end = -1;
 
-            if (line.Length == 0 || line[0] != (char)TokenChar.Chance)
+            ReadOnlySpan<char> sChance = GetNextWord(line, out int endOfNumber);
+            if (sChance.Length == 0 || TryReadInteger(sChance) is not int parsedChance)
             {
-                return 1;
+                OutputHelpers.WriteError($"Chance '{(char)TokenChar.Chance}' does not have a valid number on line {index}.");
+                return false;
             }
 
-            line = line[1..];
-
-            ReadOnlySpan<char> argument = GetNextWord(line, out int endOfNumber);
-            if (TryReadInteger(argument) is not int number)
-            {
-                return 1;
-            }
-
-            // Adds up the '%' part.
+            chance = parsedChance == 0 ? 0 : parsedChance / 100f;
             end = endOfNumber + 1;
-            return number == 0 ? 0 : number / 100f;
+
+            return true;
         }
 
         /// <summary>

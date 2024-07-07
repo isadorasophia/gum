@@ -5,7 +5,7 @@
   "publisher": "murder",
   "repository": "https://github.com/isadorasophia/gum",
   "license": "MIT",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.76.0"
   },

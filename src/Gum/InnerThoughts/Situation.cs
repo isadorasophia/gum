@@ -40,7 +40,7 @@ namespace Gum.InnerThoughts
             Name = name;
 
             // Add a root node.
-            Block block = CreateBlock(playUntil: -1, track: true);
+            Block block = CreateBlock(playUntil: -1, chance: 1, track: true);
             Edge edge = CreateEdge(EdgeKind.Next);
 
             AssignOwnerToEdge(block.Id, edge);
@@ -115,7 +115,7 @@ namespace Gum.InnerThoughts
         /// <summary>
         /// Creates a new block subjected to a <paramref name="kind"/> relationship.
         /// </summary>
-        public Block? AddBlock(int playUntil, int joinLevel, bool isNested, EdgeKind kind = EdgeKind.Next)
+        public Block? AddBlock(int playUntil, float chance, int joinLevel, bool isNested, EdgeKind kind = EdgeKind.Next)
         {
             Block lastBlock = PeekLastBlock();
             if (joinLevel == 0 && playUntil == 1 && lastBlock.PlayUntil == 1 && !lastBlock.NonLinearNode)
@@ -164,10 +164,10 @@ namespace Gum.InnerThoughts
                 (!lastEdge.Kind.IsSequential() && !kind.IsSequential()) ||
                 (kind == EdgeKind.Choice && lastEdge.Kind == EdgeKind.Choice))
             {
-                blocksToBeJoined = new int[] { parentId };
+                blocksToBeJoined = [parentId];
             }
 
-            Block block = CreateBlock(playUntil, track: true);
+            Block block = CreateBlock(playUntil, chance, track: true);
 
             block.NonLinearNode = !kind.IsSequential();
             block.IsChoice = kind == EdgeKind.Choice;
@@ -348,7 +348,7 @@ namespace Gum.InnerThoughts
                 _ = _lastBlocks.Pop();
             }
 
-            Block empty = CreateBlock(playUntil: lastBlock.PlayUntil, track: true);
+            Block empty = CreateBlock(playUntil: lastBlock.PlayUntil, chance: lastBlock.Chance, track: true);
             ReplaceEdgesToNodeWith(parentId, empty.Id);
 
             _lastBlocks.Push(blockId);
@@ -399,7 +399,7 @@ namespace Gum.InnerThoughts
                         Blocks[edge.Blocks.Last()].Requirements.Count != 0)
                     {
                         // Create else block and its edge.
-                        int elseBlockId = CreateBlock(-1, track: false).Id;
+                        int elseBlockId = CreateBlock(-1, chance: 1, track: false).Id;
 
                         Edge? elseBlockEdge = CreateEdge(EdgeKind.Next);
                         AssignOwnerToEdge(elseBlockId, elseBlockEdge);
@@ -578,10 +578,10 @@ namespace Gum.InnerThoughts
         /// <summary>
         /// Creates a new block and assign an id to it.
         /// </summary>
-        private Block CreateBlock(int playUntil, bool track)
+        private Block CreateBlock(int playUntil, float chance, bool track)
         {
             int id = Blocks.Count;
-            Block block = new(id, playUntil);
+            Block block = new(id, playUntil, chance);
 
             Blocks.Add(block);
 
