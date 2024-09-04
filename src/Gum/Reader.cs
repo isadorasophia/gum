@@ -106,24 +106,26 @@ namespace Gum
 
             inputPath = ToRootPath(inputPath);
 
-            List<CharacterScript> scripts = new List<CharacterScript>();
+            List<CharacterScript> scripts = [];
 
             IEnumerable<string> files = GetAllLibrariesInPath(inputPath, lastModified);
             foreach (string file in files)
             {
                 OutputHelpers.Log($"✨ Compiling {Path.GetFileName(file)}...");
 
-                CharacterScript? script = Parser.Parse(file);
+                string relativePath = Path.GetRelativePath(inputPath, file);
+
+                CharacterScript? script = Parser.Parse(file, name: relativePath[..^4] /* skip .gum */);
                 if (script is not null)
                 {
                     scripts.Add(script);
                 }
             }
 
-            return scripts.ToArray();
+            return [.. scripts];
         }
-
         /// <summary>
+
         /// Handles any relative path to the executable.
         /// </summary>
         private static string ToRootPath(string s) =>

@@ -119,11 +119,11 @@ namespace Gum
         /// </summary>
         private readonly List<(Block Block, string Location, int Line)> _gotoDestinations = new();
 
-        internal static CharacterScript? Parse(string file)
+        internal static CharacterScript? Parse(string file, string name)
         {
             string[] lines = File.ReadAllLines(file);
 
-            Parser parser = new(name: Path.GetFileNameWithoutExtension(file), lines);
+            Parser parser = new(name, lines);
             return parser.Start();
         }
 
