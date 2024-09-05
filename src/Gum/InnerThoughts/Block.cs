@@ -28,13 +28,14 @@ namespace Gum.InnerThoughts
 
         /// <summary>
         /// Go to another dialog with a specified id.
-        /// If this is -1, it will immediately exit the dialog interaction.
         /// </summary>
-        public int? GoTo = null;
+        public string? GoTo = null;
 
         public bool NonLinearNode = false;
 
         public bool IsChoice = false;
+
+        public bool IsExit = false;
 
         public bool Conditional = false;
 
@@ -61,7 +62,7 @@ namespace Gum.InnerThoughts
 
         public void Exit()
         {
-            GoTo = -1;
+            IsExit = true;
         }
 
         public string DebuggerDisplay()

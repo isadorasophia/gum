@@ -54,14 +54,9 @@ namespace Gum.InnerThoughts
             return null;
         }
 
-        public int? FetchSituationId(string name)
+        public bool CanFetchSituationId(string name)
         {
-            if (_situationNames.TryGetValue(name, out int id))
-            {
-                return id;
-            }
-
-            return null;
+            return _situationNames.ContainsKey(name);
         }
 
         public string[] FetchAllNames() => _situationNames.Keys.ToArray();

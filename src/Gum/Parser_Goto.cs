@@ -9,7 +9,7 @@ namespace Gum
         {
             foreach ((Block block, string location, int line) in _gotoDestinations)
             {
-                if (_script.FetchSituationId(location) is not int destinationId)
+                if (!_script.CanFetchSituationId(location))
                 {
                     OutputHelpers.WriteError($"Unable to find a situation of name '{location}' reference in line {line}.");
                     if (TryFindABestGuess(location) is string guess)
@@ -26,7 +26,7 @@ namespace Gum
                     continue;
                 }
 
-                block.GoTo = destinationId;
+                block.GoTo = location;
             }
 
             return true;
