@@ -448,6 +448,21 @@ namespace Gum
                         hasCreatedBlock = true;
                     }
                 }
+                else
+                {
+                    if (_lastLineToken == TokenChar.Flow)
+                    {
+                        Block? result = _script.CurrentSituation.AddBlock(ConsumePlayUntil(), ConsumeChance(), joinLevel: 1, isNested: false);
+                        if (result is null)
+                        {
+                            OutputHelpers.WriteError($"Unable to join line {index}. Was the indentation correct?");
+                            return false;
+                        }
+
+                        _currentBlock = result.Id;
+                        hasCreatedBlock = true;
+                    }
+                }
 
                 bool isChoiceTitle = isChoice && Defines(line, TokenChar.ChoiceBlock, $"{(char)TokenChar.ChoiceBlock}");
                 if (isChoiceTitle && !isNestedBlock)
@@ -563,7 +578,7 @@ namespace Gum
 
                                 _currentBlock = result.Id;
 
-                                // Ignore any other join or nested operations, since the block has been dealed with.
+                                // Ignore any other join or nested operations, since the block has been dealt with.
                                 joinLevel = 0;
                             }
                         }

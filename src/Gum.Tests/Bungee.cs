@@ -2361,5 +2361,82 @@ namespace Gum.Tests
             Assert.AreEqual(8, target.Owner);
             CollectionAssert.AreEqual(new int[] { 9 }, target.Blocks);
         }
+
+        [TestMethod]
+        public void TestOnceBlocks()
+        {
+            const string situationText = @"
+=Entry
+    @1  -> GoAway
+
+    You had enough.
+
+=GoAway";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1, 2 }, target.Blocks);
+
+            Block block = situation.Blocks[1];
+
+            Assert.AreEqual(1, block.PlayUntil);
+            Assert.AreEqual(0, block.Lines.Count);
+
+            block = situation.Blocks[2];
+
+            Assert.AreEqual(-1, block.PlayUntil);
+            Assert.AreEqual(1, block.Lines.Count);
+        }
+
+        [TestMethod]
+        public void TestOnceBlocks2()
+        {
+            const string situationText = @"
+=Entry
+    @1  -> GoAway
+
+    @1  -> GoAway2
+
+    You had enough.
+
+=GoAway
+
+=GoAway2";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1, 2, 3 }, target.Blocks);
+
+            Block block = situation.Blocks[1];
+
+            Assert.AreEqual(1, block.PlayUntil);
+            Assert.AreEqual(0, block.Lines.Count);
+
+            block = situation.Blocks[2];
+
+            Assert.AreEqual(1, block.PlayUntil);
+            Assert.AreEqual(0, block.Lines.Count);
+
+            block = situation.Blocks[3];
+
+            Assert.AreEqual(-1, block.PlayUntil);
+            Assert.AreEqual(1, block.Lines.Count);
+        }
     }
 }
