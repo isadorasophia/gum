@@ -39,6 +39,8 @@ namespace Gum.InnerThoughts
 
         public bool Conditional = false;
 
+        public bool CanBeSkipped => Requirements.Count > 0 || PlayUntil != -1 || Chance != 1;
+
         public Block() { }
 
         public Block(int id, int playUntil, float chance) => 

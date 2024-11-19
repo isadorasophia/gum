@@ -698,7 +698,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(4, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 5 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 5, 11 }, target.Blocks);
 
             target = situation.Edges[6];
 
@@ -1022,7 +1022,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(1, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 2 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 2, 3, 6, 8 }, target.Blocks);
 
             target = situation.Edges[3];
 
@@ -1034,7 +1034,13 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(4, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 6 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 6, 8 }, target.Blocks);
+
+            target = situation.Edges[6];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(6, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 7, 8 }, target.Blocks);
         }
 
         [TestMethod]
@@ -1342,7 +1348,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(3, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 4, 5 }, target.Blocks);
 
             target = situation.Edges[4];
 
@@ -1390,6 +1396,7 @@ namespace Gum.Tests
 
 =ChooseName";
 
+
             CharacterScript? script = Read(situationText);
             Assert.IsTrue(script != null);
 
@@ -1408,7 +1415,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(1, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 2 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 2, 5 }, target.Blocks);
 
             Assert.AreEqual(1, situation.Blocks[2].PlayUntil); // @1
 
@@ -1422,7 +1429,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(3, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 4, 5 }, target.Blocks);
 
             Assert.AreEqual(1, situation.Blocks[4].PlayUntil); // @1
 
@@ -1473,7 +1480,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(1, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 2 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 2, 5 }, target.Blocks);
 
             Assert.AreEqual(1, situation.Blocks[2].PlayUntil); // @1
 
@@ -1487,7 +1494,7 @@ namespace Gum.Tests
 
             Assert.AreEqual(EdgeKind.Next, target.Kind);
             Assert.AreEqual(3, target.Owner);
-            CollectionAssert.AreEqual(new int[] { 4 }, target.Blocks);
+            CollectionAssert.AreEqual(new int[] { 4, 5 }, target.Blocks);
 
             Assert.AreEqual(1, situation.Blocks[4].PlayUntil); // @1
 
@@ -2437,6 +2444,81 @@ namespace Gum.Tests
 
             Assert.AreEqual(-1, block.PlayUntil);
             Assert.AreEqual(1, block.Lines.Count);
+        }
+
+        [TestMethod]
+        public void TestOnceBlocksUnderIf()
+        {
+            const string situationText = @"
+=Entry
+    (Progress == 1)
+        @1  -> ask
+
+    (Pending == 1)
+        @1  -> cat
+        
+    (Pending == 0 && Progress == 1)
+        @1  -> cat
+
+    @1  -> ask
+
+=ask
+    Hi!
+
+=cat
+    Bye!";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1, 3, 5, 7 }, target.Blocks);
+
+            Block block = situation.Blocks[1];
+            target = situation.Edges[1];
+
+            Assert.AreEqual(true, block.Conditional);
+            CollectionAssert.AreEqual(new int[] { 2, 3, 5, 7 }, target.Blocks);
+
+            block = situation.Blocks[2];
+
+            Assert.AreEqual(1, block.PlayUntil);
+            Assert.AreEqual("ask", block.GoTo);
+
+            block = situation.Blocks[3];
+            target = situation.Edges[3];
+
+            Assert.AreEqual(true, block.Conditional);
+            Assert.AreEqual(-1, block.PlayUntil);
+            CollectionAssert.AreEqual(new int[] { 4, 5, 7 }, target.Blocks);
+
+            block = situation.Blocks[4];
+
+            Assert.AreEqual(1, block.PlayUntil);
+            Assert.AreEqual("cat", block.GoTo);
+
+            block = situation.Blocks[5];
+            target = situation.Edges[5];
+
+            Assert.AreEqual(true, block.Conditional);
+            Assert.AreEqual(-1, block.PlayUntil);
+            CollectionAssert.AreEqual(new int[] { 6, 7 }, target.Blocks);
+
+            block = situation.Blocks[6];
+
+            Assert.AreEqual(1, block.PlayUntil);
+            Assert.AreEqual("cat", block.GoTo);
+
+            block = situation.Blocks[7];
+
+            Assert.AreEqual(1, block.PlayUntil);
+            Assert.AreEqual("ask", block.GoTo);
         }
     }
 }

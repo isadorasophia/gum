@@ -1,4 +1,5 @@
 ﻿using Gum.Utilities;
+using System;
 using System.Diagnostics;
 using System.Text.Json.Serialization;
 
@@ -368,8 +369,11 @@ namespace Gum.InnerThoughts
             Edge edge = Edges[block];
             if (edge.Blocks.Count != 0)
             {
+                bool hasNonConditionalLeaf = false;
                 foreach (int otherBlock in edge.Blocks)
                 {
+                    hasNonConditionalLeaf |= Blocks[otherBlock].CanBeSkipped is false;
+
                     GetAllLeaves(otherBlock, createBlockForElse, ref result);
                 }
 
@@ -410,6 +414,22 @@ namespace Gum.InnerThoughts
                         // Track the block as a leaf.
                         result.Add(elseBlockId);
                     }
+                }
+
+                // The purpose is this is to allow an alternative if all the children nodes are conditions.
+                // For example:
+                //    (Progress == 1)
+                //        @1  -> first
+                //
+                //    (Pending == 1)
+                //        @1  -> second
+                //
+                // We must make sure that if '-> first' has already been excuted more than once,
+                // we can fallback to the second condition.
+                // So, we add the parent block to the leaf nodes indices to be joined as an alternative exit.
+                if (!hasNonConditionalLeaf)
+                {
+                    result.Add(block);
                 }
             }
             else
@@ -485,7 +505,7 @@ namespace Gum.InnerThoughts
 
             topParent = _lastBlocks.Peek();
 
-            int[] blocksToLookForLeaves = Edges[topParent].Blocks.ToArray();
+            int[] blocksToLookForLeaves = [.. Edges[topParent].Blocks];
             HashSet<int> leafBlocks = new();
 
             // Now, for each of those blocks, we'll collect all of its leaves and add edges to it.
@@ -498,8 +518,8 @@ namespace Gum.InnerThoughts
 
             if (leafBlocks.Count != 0)
             {
-                HashSet<int> prunnedLeafBlocks = leafBlocks.ToHashSet();
-                foreach (int b in prunnedLeafBlocks)
+                HashSet<int> prunnedLeafBlocks = [.. leafBlocks];
+                foreach (int b in leafBlocks)
                 {
                     if (b != topParent)
                     {
