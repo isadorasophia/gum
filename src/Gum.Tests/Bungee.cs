@@ -2520,5 +2520,48 @@ namespace Gum.Tests
             Assert.AreEqual(1, block.PlayUntil);
             Assert.AreEqual("ask", block.GoTo);
         }
+
+        [TestMethod]
+        public void TestOnceBlocksExitUnderIf()
+        {
+            const string situationText = @"
+=Entry
+    (Something)
+        @1  hi!
+            // Have you ever tried going to the bathhouse? It always makes me feel refreshed.
+            -> exit!
+
+    @1  Some question?
+        Right?
+
+        [Action += 1]
+        -> exit!
+
+    @1  Sorry?
+        -> exit!
+
+    @1  Not right now.
+        Okay?
+        -> exit!
+";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1, 3, 4, 5 }, target.Blocks);
+
+            Block block = situation.Blocks[1];
+            target = situation.Edges[1];
+
+            Assert.AreEqual(true, block.Conditional);
+            CollectionAssert.AreEqual(new int[] { 2, 3, 4, 5 }, target.Blocks);
+        }
     }
 }

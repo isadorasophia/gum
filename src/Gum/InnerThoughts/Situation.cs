@@ -434,7 +434,7 @@ namespace Gum.InnerThoughts
             }
             else
             {
-                if (!_blocksWithGoto.Contains(block))
+                if (!_blocksWithGoto.Contains(block) && !Blocks[block].IsExit)
                 {
                     // This doesn't point to any other blocks - so it's a leaf!
                     result.Add(block);
