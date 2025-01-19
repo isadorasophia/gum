@@ -406,6 +406,28 @@ namespace Gum
                                     _script.CurrentSituation.PopLastBlock();
                                 }
 
+                                // if this is not a title, we need to pop until we find another choice block!
+                                if (line[0] == (char)TokenChar.ChoiceBlock && 
+                                    line.Length > 1 && 
+                                    line[1] != (char)TokenChar.ChoiceBlock)
+                                {
+                                    Block? block = null;
+                                    while (
+                                        (block = _script.CurrentSituation.TryPeekLastBlock()) is not null && 
+                                        !block.IsChoice)
+                                    {
+                                        _script.CurrentSituation.PopLastBlock();
+                                    }
+
+                                    if (block is null)
+                                    {
+                                        OutputHelpers.WriteError(
+                                            $"Expected a title prior to a choice block '{(char)TokenChar.ChoiceBlock}' on line {index}.");
+
+                                        return false;
+                                    }
+                                }
+
                                 createJoinBlock = false;
                             }
                         }

@@ -91,6 +91,8 @@ namespace Gum.InnerThoughts
 
         internal EdgeKind PeekLastEdgeKind() => LastEdge.Kind;
 
+        internal Block? TryPeekLastBlock() => _lastBlocks.Count == 0 ? null : Blocks[_lastBlocks.Peek()];
+
         internal Block PeekLastBlock() => Blocks[_lastBlocks.Peek()];
 
         internal Block PeekLastBlockParent() => Blocks[_lastBlocks.ElementAt(1)];
