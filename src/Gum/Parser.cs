@@ -119,6 +119,8 @@ namespace Gum
         /// </summary>
         private readonly List<(Block Block, string Location, int Line)> _gotoDestinations = new();
 
+        private readonly Dictionary<int, int> _blockToIndentationIndices = [];
+        
         internal static CharacterScript? Parse(string file, string name)
         {
             string[] lines = File.ReadAllLines(file);
@@ -163,6 +165,11 @@ namespace Gum
                 // Count the indentation based on the regex captures result.
                 _lastIndentationIndex = _indentationIndex;
                 _indentationIndex = result[0].Groups[1].Captures.Count;
+
+                if (_script.HasCurrentSituation && _script.CurrentSituation.TryPeekLastBlock() is Block block)
+                {
+                    _blockToIndentationIndices[block.Id] = _lastIndentationIndex;
+                }
 
                 // For science!
                 int column = lineNoComments.Length - lineNoIndent.Length;
@@ -390,42 +397,25 @@ namespace Gum
                             if (line[0] != (char)TokenChar.MultipleBlock &&
                                 line[0] != (char)TokenChar.OnceBlock)
                             {
-                                // We might need to check out if we're too deep due to a dialogue choice.
-                                // E.g.:
-                                //     > Yup.
-                                //         Great!
-                                //
-                                //        >> How is life so far?
-                                //        > It's been nice.
-                                //            No way.
-                                //    > No...                       <- This line needs to pop twice.
-                                //        ...
-                                int pop = joinLevel;
-                                while (pop-- > 0)
-                                {
-                                    _script.CurrentSituation.PopLastBlock();
-                                }
-
-                                // if this is not a title, we need to pop until we find another choice block!
+                                // If this is a choice block, we should now look for the "root" of the question branch.
+                                // This will be the block with choice edges and that shares the same indentation index.
                                 if (line[0] == (char)TokenChar.ChoiceBlock && 
                                     line.Length > 1 && 
                                     line[1] != (char)TokenChar.ChoiceBlock)
                                 {
-                                    Block? block = null;
-                                    while (
-                                        (block = _script.CurrentSituation.TryPeekLastBlock()) is not null && 
-                                        !block.IsChoice)
+                                    while (true)
                                     {
+                                        if (_script.CurrentSituation.PeekLastEdgeKind() == EdgeKind.Choice &&
+                                            _blockToIndentationIndices[_script.CurrentSituation.PeekLastBlock().Id] == _indentationIndex)
+                                        {
+                                            break;
+                                        }
+
                                         _script.CurrentSituation.PopLastBlock();
                                     }
 
-                                    if (block is null)
-                                    {
-                                        OutputHelpers.WriteError(
-                                            $"Expected a title prior to a choice block '{(char)TokenChar.ChoiceBlock}' on line {index}.");
-
-                                        return false;
-                                    }
+                                    // since the last block
+                                    joinLevel = 0;
                                 }
 
                                 createJoinBlock = false;
@@ -538,6 +528,7 @@ namespace Gum
                             return false;
                         }
 
+                        _blockToIndentationIndices.Clear();
                         return true;
 
                     // @
@@ -767,7 +758,7 @@ namespace Gum
                 return false;
             }
 
-            Block parent = _script.CurrentSituation.PeekBlockAt(joinLevel);
+            Block parent = _script.CurrentSituation.PeekLastBlock();
             if (!parent.IsChoice && line[0] != (char)TokenChar.ChoiceBlock)
             {
                 ReadOnlySpan<char> newLine = _currentLine.AsSpan().Slice(0, columnIndex);

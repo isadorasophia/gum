@@ -2603,5 +2603,45 @@ namespace Gum.Tests
             Assert.AreEqual("First answer", block.Lines[0].Text);
             CollectionAssert.AreEqual(new int[] { 3 }, target.Blocks);
         }
+
+        [TestMethod]
+        public void TestActionAfterChoiceWithCondition()
+        {
+            const string situationText = @"
+=Entry
+    >> He tried to make a joke.
+    > That's actually pretty funny.
+        (IsTrue)
+            Yeah!
+            [Action += 2]
+            Okay.
+        (...)
+            No!
+            [Action += 1]
+            Right...
+    > That sounds terrible.
+        No man.
+        [Action += 2]
+        Ok.
+";
+
+            CharacterScript? script = Read(situationText);
+            Assert.IsTrue(script != null);
+
+            Situation? situation = script.FetchSituation(id: 0);
+            Assert.IsTrue(situation != null);
+
+            Edge target = situation.Edges[0];
+
+            Assert.AreEqual(EdgeKind.Next, target.Kind);
+            Assert.AreEqual(0, target.Owner);
+            CollectionAssert.AreEqual(new int[] { 1 }, target.Blocks);
+
+            Block block = situation.Blocks[1];
+            target = situation.Edges[1];
+
+            Assert.AreEqual(true, block.IsChoice);
+            CollectionAssert.AreEqual(new int[] { 2, 7 }, target.Blocks);
+        }
     }
 }
