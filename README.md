@@ -37,7 +37,12 @@ $ gum.exe <scripts_path> <out_path>
   - Path of a directory or a single file to all *.gum files.
 - `<out_path>` 
   - Output *.json with C# metadata to be consumed by a third party.
-  
+
+### Contributing
+Feel free to contact me or [saint11](http://saint11.org/) if you have any suggestions. I am very interested in people trying it out and any feedback you may have!
+
+Pull requests, bug reports and other contributions made with LLM or any generative AI technology will NOT be accepted. I am not in the slight interested in reviewing any non-human code.
+
 #### Example
 ```shell
 $ gum.exe ../game/resources/dialogs ../game/src/project/packed/dialogs
